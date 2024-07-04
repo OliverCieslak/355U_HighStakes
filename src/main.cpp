@@ -1,20 +1,15 @@
 #include "main.h"
+#include "robodash/api.h"
+#include "lemlib/api.hpp" // IWYU pragma: keep
+#include "autons.h"
 
-/**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
-void on_center_button() {
-	static bool pressed = false;
-	pressed = !pressed;
-	if (pressed) {
-		pros::lcd::set_text(2, "I was pressed!");
-	} else {
-		pros::lcd::clear_line(2);
-	}
-}
+rd::Selector selector({
+   {"Auton 0", &auton0},
+   {"Auton 1", &simple_auton},
+   {"Skills Run", &skills}
+});
+ 
+rd::Console console;
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -23,10 +18,9 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
-
-	pros::lcd::register_btn1_cb(on_center_button);
+   console.println("Initializing robot...");
+   // Robot stuff would happen...
+   console.println("Initializing robot...Done!");
 }
 
 /**
@@ -58,7 +52,14 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+	u_int64_t start = pros::millis();
+	console.println("Running auton...");
+	selector.run_auton();
+
+	u_int64_t end = pros::millis();
+	console.println("Auton complete! Time: " + std::to_string((end - start) / 1000.0) + " seconds");
+}
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -80,10 +81,6 @@ void opcontrol() {
 
 
 	while (true) {
-		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);  // Prints status of the emulated screen LCDs
-
 		// Arcade control scheme
 		int dir = master.get_analog(ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
 		int turn = master.get_analog(ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
