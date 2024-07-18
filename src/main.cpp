@@ -17,10 +17,11 @@ pros::MotorGroup leftMotors({-4, -6, -5},
                             pros::MotorGearset::blue);
 pros::MotorGroup rightMotors({10, 19, 7}, pros::MotorGearset::blue);
 
-pros::MotorGroup intakeMotors({8, 20}, pros::MotorGearset::green);
-
 pros::Imu imu(9);
-
+pros::Motor lowIntakeMotor(8);
+pros::Motor HighIntakeMotor(20);
+pros::ADIDigitalOut BackClamp('B');
+pros::ADIDigitalOut Wiper('A');
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -146,8 +147,11 @@ void autonomous()
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
+
 void opcontrol()
 {
+   int back_clamp_state = 0;
+   int Wiper_state = 0;
    while (true)
    {
       // get left y and right x positions
@@ -156,6 +160,52 @@ void opcontrol()
 
       // move the robot
       chassis.curvature(leftY, rightX);
+
+      // controller setup
+      pros::Controller master(CONTROLLER_MASTER);
+
+      if (master.get_digital(DIGITAL_R1))
+      {
+         lowIntakeMotor.move_velocity(127);
+      }
+      else if (master.get_digital(DIGITAL_R2))
+      {
+         lowIntakeMotor.move_velocity(-127);
+      }
+      else
+      {
+         lowIntakeMotor.move_velocity(0);
+      }
+      if (master.get_digital(DIGITAL_L1))
+      {
+         HighIntakeMotor.move_velocity(127);
+      }
+      else if (master.get_digital(DIGITAL_L2))
+      {
+         HighIntakeMotor.move_velocity(-127);
+      }
+      else
+      {
+         HighIntakeMotor.move_velocity(0);
+      }
+      if (master.get_digital_new_press (DIGITAL_A))
+      {
+         BackClamp.set_value(back_clamp_state);
+         if(back_clamp_state == 0) {
+            back_clamp_state = 1;
+         } else {
+            back_clamp_state = 0;         
+         }
+      }
+      if (master.get_digital_new_press (DIGITAL_B))
+      {
+         Wiper.set_value(Wiper_state);
+         if(Wiper_state == 0) {
+            Wiper_state = 1;
+         } else {
+            Wiper_state = 0;         
+         }
+      }
 
       // delay to save resources
       pros::delay(25);
