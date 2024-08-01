@@ -3,26 +3,41 @@
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "autons.h"
 
-rd::Selector selector({{"Auton 0", &auton0},
-                       {"Auton 1", &simple_auton},
-                       {"Skills Run", &skills}});
 
+
+rd::Selector selector({{"Goal Rush", &goalRushAuton},
+                       {"Auton 1", &simple_auton},
+                       {"Skills Run", &skills},
+                       {"Linear PID Movement", &linear_pid_movement},
+                       {"Turn PID Movement", &turn_pid_movement}, 
+                       {"Goal Fill", &GoalFill},
+                       {"Two Goal Side Fill", &TwoGoalSideFill},
+                       });
+// linear_pid_movement
 rd::Console console;
 
 // controller
-pros::Controller controller(pros::E_CONTROLLER_MASTER);
+pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 
 // motor groups
-pros::MotorGroup leftMotors({-4, -6, -5},
+pros::MotorGroup leftMotors({-14, -17, -19},
                             pros::MotorGearset::blue);
-pros::MotorGroup rightMotors({10, 19, 7}, pros::MotorGearset::blue);
+pros::MotorGroup rightMotors({18, 21, 16}, pros::MotorGearset::blue);
+pros::Optical intakeStage1ColorSensor(11);
+pros::Optical intakeStage2ColorSensor(3);
+pros::Imu imu(15);
 
-pros::Imu imu(9);
-pros::Motor lowIntakeMotor(8);
-pros::Motor HighIntakeMotor(20);
-pros::ADIDigitalOut BackClamp('B');
-pros::ADIDigitalOut Wiper('A');
-// drivetrain settings
+int STAGE1_INTAKE_PORT = 13;
+int STAGE2_INTAKE_PORT = 8;
+pros::Motor lowIntakeMotor(STAGE1_INTAKE_PORT);
+pros::Motor highIntakeMotor(STAGE2_INTAKE_PORT);
+
+pros::adi::DigitalOut backClampPnuematic('E');
+pros::adi::DigitalOut wiperPneumatic('B');
+pros::adi::DigitalOut climbArms('H');
+int isWiperTaskRunning = 0;
+int Wiper_state = 0;
+                              
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
                               11.0,
@@ -32,13 +47,13 @@ lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
 );
 
 // lateral motion controller
-lemlib::ControllerSettings linearController(5,   // proportional gain (kP)
+lemlib::ControllerSettings linearController(13,   // proportional gain (kP)
                                             0,   // integral gain (kI)
                                             3,   // derivative gain (kD)
                                             3,   // anti windup
-                                            .75, // small error range, in inches
+                                            1, // small error range, in inches
                                             100, // small error range timeout, in milliseconds
-                                            1.5, // large error range, in inches
+                                            3, // large error range, in inches
                                             500, // large error range timeout, in milliseconds
                                             10   // maximum acceleration (slew)
 );
@@ -59,8 +74,8 @@ lemlib::TrackingWheel left_vertical_tracking_wheel(&leftMotors, lemlib::Omniwhee
 lemlib::TrackingWheel right_vertical_tracking_wheel(&rightMotors, lemlib::Omniwheel::NEW_275, 6, 600);
 
 // odometry settings
-lemlib::OdomSensors sensors(nullptr, // vertical tracking wheel 1,
-                            nullptr, // vertical tracking wheel 2,
+lemlib::OdomSensors sensors(&left_vertical_tracking_wheel, // vertical tracking wheel 1,
+                            &right_vertical_tracking_wheel, // vertical tracking wheel 2,
                             nullptr, // horizontal tracking wheel 1
                             nullptr, // horizontal tracking wheel 2, set to nullptr as we don't have a second one
                             &imu     // inertial sensor
@@ -77,6 +92,73 @@ lemlib::ExpoDriveCurve steerCurve(3,    // joystick deadband out of 127
                                   10,   // minimum output where drivetrain will move out of 127
                                   1.019 // expo curve gain
 );
+// Enumeration for the color states
+
+// Enumeration for the color states
+enum ColorState
+{
+   RED,
+   BLUE,
+   NO_COLOR
+};
+
+// Global variable to keep track of the current color state
+ColorState currentColorState = NO_COLOR;
+
+const int RED_SIDE_AUTON = 1;
+const int BLUE_SIDE_AUTON = -1;
+int autonSideDetected = RED_SIDE_AUTON;
+
+// Function to cycle through the color states based on the current hue
+void updateColorState()
+{
+   int colorDistance = (int)intakeStage1ColorSensor.get_proximity();
+
+   if (colorDistance < 100)
+   {
+      currentColorState = NO_COLOR;
+      return;
+   }
+
+   int hue = (int)intakeStage1ColorSensor.get_hue(); // Get the current hue from the sensor
+
+   // Check the hue range and update the state
+   if (hue >= 1 && hue <= 20)
+   {
+      currentColorState = RED;
+   }
+   else if (hue >= 198 && hue <= 240)
+   {
+      currentColorState = BLUE;
+   }
+   else
+   {
+      currentColorState = NO_COLOR;
+   }
+}
+
+// Function to cycle through the color states based on the current hue
+void getAutonColorState()
+{
+   int colorDistance = (int)intakeStage2ColorSensor.get_proximity();
+
+   if (colorDistance < 100)
+   {
+      return;
+   }
+
+   int hue = (int)intakeStage2ColorSensor.get_hue(); // Get the current hue from the sensor
+
+   // Check the hue range and update the state
+   if (hue >= 1 && hue <= 20)
+   {
+      autonSideDetected = RED_SIDE_AUTON;
+   }
+   else if (hue >= 198 && hue <= 240)
+   {
+      autonSideDetected = BLUE_SIDE_AUTON;
+   }
+}
 
 // create the chassis
 lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors, &throttleCurve, &steerCurve);
@@ -90,7 +172,10 @@ lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors
 void initialize()
 {
    console.println("Initializing robot...");
+   chassis.setPose(0, 0, 0);
+   chassis.cancelAllMotions();
    chassis.calibrate();
+   chassis.setPose(0, 0, 0);
 
    console.println("Initializing robot...Done!");
 }
@@ -126,12 +211,22 @@ void competition_initialize() {}
  */
 void autonomous()
 {
+   char buffer[100];
+   chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
    u_int64_t start = pros::millis();
    console.println("Running auton...");
+   printf("Running auton...\n");
+   getAutonColorState();
+   sprintf(buffer, "Auton side detected: %d\n", autonSideDetected);
+   console.println(buffer);
+   printf(buffer);
    selector.run_auton();
-
+   
    u_int64_t end = pros::millis();
    console.println("Auton complete! Time: " + std::to_string((end - start) / 1000.0) + " seconds");
+   sprintf(buffer, "Time: %.2f seconds\n", (end - start) / 1000.0);
+   masterController.print(0, 0, buffer);
+   printf("Auton complete! Time: %f seconds\n", (end - start) / 1000.0);
 }
 
 /**
@@ -150,25 +245,70 @@ void autonomous()
 
 void opcontrol()
 {
-   int back_clamp_state = 0;
-   int Wiper_state = 0;
+   int backClampState = 0;
+   int autoWiperState = 0;
+   int autoWiperColor = RED;
+   int climbArmsState = 0;
+   pros::Task wiper_task(do_wiper);
    while (true)
    {
       // get left y and right x positions
-      int leftY = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-      int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+      int leftY = masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+      int rightX = masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
       // move the robot
       chassis.curvature(leftY, rightX);
 
-      // controller setup
-      pros::Controller master(CONTROLLER_MASTER);
-
-      if (master.get_digital(DIGITAL_R1))
+      if (masterController.get_digital_new_press(DIGITAL_Y))
       {
+         if (autoWiperState == 0)
+         {
+            autoWiperState = 1;
+            intakeStage1ColorSensor.set_led_pwm(255);
+         }
+         else
+         {
+            autoWiperState = 0;
+            intakeStage1ColorSensor.set_led_pwm(0);
+         }
+      }
+      if (masterController.get_digital_new_press(DIGITAL_DOWN))
+      {
+         if (autoWiperColor == RED)
+         {
+            autoWiperColor = BLUE;
+         }
+         else
+         {
+            autoWiperColor = RED;
+         }
+      }
+
+      // The wiper takes some time, we want to still control the
+      // robot while the wiper is running so we set it up as a task
+      // and make sure that only 1 task is running at a time
+      if (autoWiperState != 0 && isWiperTaskRunning == 0)
+      {
+         updateColorState();
+         if (currentColorState == autoWiperColor)
+         {
+            isWiperTaskRunning = 1;
+         }
+      }
+      else
+      {
+         currentColorState = NO_COLOR;
+      }
+
+      if (masterController.get_digital(DIGITAL_R1))
+      {
+         if(isWiperTaskRunning == 0 && Wiper_state == 0)
+         {
+            lowIntakeMotor.move_velocity(127);
+         }
          lowIntakeMotor.move_velocity(127);
       }
-      else if (master.get_digital(DIGITAL_R2))
+      else if (masterController.get_digital(DIGITAL_R2))
       {
          lowIntakeMotor.move_velocity(-127);
       }
@@ -176,65 +316,59 @@ void opcontrol()
       {
          lowIntakeMotor.move_velocity(0);
       }
-      if (master.get_digital(DIGITAL_L1))
+      if (masterController.get_digital(DIGITAL_L1))
       {
-         HighIntakeMotor.move_velocity(127);
+         highIntakeMotor.move_velocity(127);
       }
-      else if (master.get_digital(DIGITAL_L2))
+      else if (masterController.get_digital(DIGITAL_L2))
       {
-         HighIntakeMotor.move_velocity(-127);
+         highIntakeMotor.move_velocity(-127);
       }
       else
       {
-         HighIntakeMotor.move_velocity(0);
+         highIntakeMotor.move_velocity(0);
       }
-      if (master.get_digital_new_press (DIGITAL_A))
+
+      if (masterController.get_digital_new_press(DIGITAL_A))
       {
-         BackClamp.set_value(back_clamp_state);
-         if(back_clamp_state == 0) {
-            back_clamp_state = 1;
-         } else {
-            back_clamp_state = 0;         
+         backClampPnuematic.set_value(backClampState);
+         if (backClampState == 0)
+         {
+            backClampState = 1;
          }
-      }
-      if (master.get_digital_new_press (DIGITAL_B))
-      {
-         Wiper.set_value(Wiper_state);
-         if(Wiper_state == 0) {
-            Wiper_state = 1;
-         } else {
-            Wiper_state = 0;         
+         else
+         {
+            backClampState = 0;
          }
       }
 
+      if (masterController.get_digital_new_press(DIGITAL_B))
+      {
+         wiperPneumatic.set_value(Wiper_state);
+         if (Wiper_state == 0)
+         {
+            Wiper_state = 1;
+         }
+         else
+         {
+            Wiper_state = 0;
+         }
+      }
+
+      if (masterController.get_digital_new_press(DIGITAL_UP))
+      {
+         if(climbArmsState == 0)
+         {
+            climbArmsState = 1;
+         }
+         else
+         {
+            climbArmsState = 0;
+         }
+         climbArms.set_value(climbArmsState);
+      }
+
       // delay to save resources
-      pros::delay(25);
+      pros::delay(20);
    } // Run for 20 ms then update
-   /*
-   chassis.calibrate(true);
-   chassis.cancelAllMotions();
-   chassis.setPose(0, 0, 0);
-   pros::delay(2000);
-   lemlib::Pose start_pose = chassis.getPose();
-   double start_heading = imu.get_rotation();
-   chassis.moveToPoint(0, 40, 10000);
-   pros::delay(500);
-   lemlib::Pose pose = chassis.getPose();
-   float distance_travelled = pose.distance(start_pose);
-   float heading_change = pose.theta - start_pose.theta;
-   double end_heading = imu.get_rotation();
-   printf("d: %.1f, x: %.1f, y: %.1f, h: %.1f, dh: %.1f, sh: %.1f, eh: %.1f\n", distance_travelled, pose.x, pose.y, pose.theta, heading_change, start_heading, end_heading);
-   //chassis.turnToHeading(90, 100000);
-   pose = chassis.getPose();
-   distance_travelled = pose.distance(start_pose);
-   heading_change = pose.theta - start_pose.theta;
-   end_heading = imu.get_rotation();
-   printf("d: %.1f, x: %.1f, y: %.1f, h: %.1f, dh: %.1f, sh: %.1f, eh: %.1f\n", distance_travelled, pose.x, pose.y, pose.theta, heading_change, start_heading, end_heading);
-   pros::delay(500);
-   pose = chassis.getPose();
-   distance_travelled = pose.distance(start_pose);
-   heading_change = pose.theta - start_pose.theta;
-   end_heading = imu.get_rotation();
-   printf("d: %.1f, x: %.1f, y: %.1f, h: %.1f, dh: %.1f, sh: %.1f, eh: %.1f\n", distance_travelled, pose.x, pose.y, pose.theta, heading_change, start_heading, end_heading);
-   */
 }
