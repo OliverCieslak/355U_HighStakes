@@ -13,14 +13,20 @@ void goalRushAuton()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);    
-    chassis.moveToPoint(0 * autonSideDetected, -46, 3000 ,{.forwards = false, .minSpeed = 42, .earlyExitRange = 11}, true);
+    chassis.moveToPoint(0 * autonSideDetected, -50, 3000 ,{.forwards = false, .minSpeed = 42, .earlyExitRange = 11}, true);
     chassis.waitUntil(22);      // Move past 2 stack
     chassis.cancelAllMotions();
     chassis.moveToPoint(6 * autonSideDetected, -39, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
     chassis.waitUntil(2.5);     // Position for Neutral Goal 
-    chassis.moveToPoint(9 * autonSideDetected, -45, 4000 ,{.forwards = false, .maxSpeed = 30}, false);
+    chassis.moveToPoint(9 * autonSideDetected, -55, 4000 ,{.forwards = false, .maxSpeed = 30}, false);
+    chassis.moveToPoint(9 * autonSideDetected, -55, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
     backClampPnuematic.set_value(1);  // Grab Neutral Goal
-    chassis.cancelAllMotions();
+
+    chassis.moveToPoint(14 * autonSideDetected, -40, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(30 * autonSideDetected, -48, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
+    chassis.moveToPoint(35 * autonSideDetected, -48, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
+    intakeStage2.move_velocity(127);
+   /* chassis.cancelAllMotions();
     pros::delay(250);
 
 
@@ -70,7 +76,7 @@ void goalRushAuton()
     chassis.moveToPoint(50 * autonSideDetected, -34, 3000 ,{.forwards = true, .maxSpeed=80}, true);
     chassis.waitUntil(18);  // Touch ladder
     chassis.cancelAllMotions();
-}
+*/}
 
 void simple_auton()
 { 
@@ -184,31 +190,32 @@ void GoalFill()
     chassis.moveToPoint(0 * autonSideDetected, -15, 3000 ,{.forwards = false, .maxSpeed=80}, false);
     //chassis.waitUntil(4);  
 
-    chassis.moveToPoint(9 * autonSideDetected, -27, 3000 ,{.forwards = false, .maxSpeed=80}, false);
+    chassis.moveToPoint(10 * autonSideDetected, -27, 3000 ,{.forwards = false, .maxSpeed=80}, false);
     //chassis.waitUntil(4); 
 
     backClampPnuematic.set_value(1); 
-    pros::delay(500);
-
+    pros::delay(300);
+    intakeStage1.move_velocity(127);
     intakeStage2.move_velocity(127);
     pros::delay(1500);
 
     intakeStage2.move_velocity(0);
-    pros::delay(500);
-
-    chassis.moveToPoint(12 * autonSideDetected, -30, 3000 ,{.forwards = false, .maxSpeed=80}, false);
+    pros::delay(300); 
+    
+    chassis.moveToPoint(12 * autonSideDetected, -28, 3000 ,{.forwards = false, .maxSpeed=80}, false);
     //chassis.waitUntil(1);  
 
-    chassis.moveToPoint(20* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=80}, true);
-    chassis.waitUntil(8);  
+    chassis.moveToPoint(28* autonSideDetected, -27, 3000 ,{.forwards = true, .maxSpeed=80}, true);
+    chassis.waitUntil(11);  
 
+    
+
+    
+
+    chassis.moveToPoint(35* autonSideDetected, -27, 3000 ,{.forwards = true, .maxSpeed=60}, true);
+    chassis.waitUntil(7);
     pros::delay(500);
-
-    intakeStage1.move_velocity(127); 
-
-    chassis.moveToPoint(30* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=20}, true);
-    chassis.waitUntil(10);
-    pros::delay(100);
+    //chassis.moveToPoint(39* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=60}, true);
 
     backClampPnuematic.set_value(0); 
     pros::delay(300);
@@ -217,10 +224,10 @@ void GoalFill()
     pros::delay(1100);
 
     intakeStage2.move_velocity(127);
-    pros::delay(2000);
-
-    intakeStage1.move_velocity(0);
     pros::delay(2500);
+
+    //intakeStage1.move_velocity(0);
+    
 
     intakeStage2.move_velocity(0);
 
@@ -232,7 +239,7 @@ void GoalFill()
     chassis.moveToPoint(-5 * autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=80}, true);
     chassis.waitUntil(25); 
 
-    chassis.moveToPoint(-6* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=10}, true);
+    chassis.moveToPoint(-8* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=20}, true);
     chassis.waitUntil(1);
 }
 

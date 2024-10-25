@@ -23,11 +23,11 @@ pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup leftMotors({-14, -17, -19},
                             pros::MotorGearset::blue);
 pros::MotorGroup rightMotors({18, 21, 16}, pros::MotorGearset::blue);
-pros::Optical intakeStage1ColorSensor(11);
+pros::Optical intakeStage1ColorSensor(6);
 pros::Optical intakeStage2ColorSensor(3);
 pros::Imu imu(15);
 
-int STAGE1_INTAKE_PORT = 13;
+int STAGE1_INTAKE_PORT = 11;
 int STAGE2_INTAKE_PORT = 8;
 pros::Motor lowIntakeMotor(STAGE1_INTAKE_PORT);
 pros::Motor highIntakeMotor(STAGE2_INTAKE_PORT);
@@ -123,14 +123,19 @@ void updateColorState()
    int hue = (int)intakeStage1ColorSensor.get_hue(); // Get the current hue from the sensor
 
    // Check the hue range and update the state
-   if (hue >= 1 && hue <= 20)
+   if (hue >= 0 && hue <= 20 )
    {
       currentColorState = RED;
    }
-   else if (hue >= 198 && hue <= 240)
+   else if (hue >= 140 && hue <= 240)
    {
       currentColorState = BLUE;
    }
+   else if (hue >= 300 && hue <= 340)
+   {
+      currentColorState = RED;
+   }
+   
    else
    {
       currentColorState = NO_COLOR;
@@ -150,13 +155,17 @@ void getAutonColorState()
    int hue = (int)intakeStage2ColorSensor.get_hue(); // Get the current hue from the sensor
 
    // Check the hue range and update the state
-   if (hue >= 1 && hue <= 20)
+   if (hue >= 0 && hue <= 20)
    {
       autonSideDetected = RED_SIDE_AUTON;
    }
    else if (hue >= 198 && hue <= 240)
    {
       autonSideDetected = BLUE_SIDE_AUTON;
+   }
+    else if (hue >= 300 && hue <= 340)
+   {
+      autonSideDetected = RED_SIDE_AUTON;
    }
 }
 
