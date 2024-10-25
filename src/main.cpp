@@ -5,13 +5,16 @@
 
 
 
-rd::Selector selector({{"Goal Rush", &goalRushAuton},
-                       {"Auton 1", &simple_auton},
-                       {"Skills Run", &skills},
-                       {"Linear PID Movement", &linear_pid_movement},
-                       {"Turn PID Movement", &turn_pid_movement}, 
-                       {"Goal Fill", &GoalFill},
-                       {"Two Goal Side Fill", &TwoGoalSideFill},
+rd::Selector selector({
+                        {"Simple Alliance", &simpleAllianceStake},
+                        {"Single MoGo", &simpleSingleMogo},
+                        // {"Goal Rush", &goalRushAuton},
+                        {"Auton 1", &simpleAuton},
+                        {"Skills Run", &skills},
+                        {"Goal Fill", &goalFill},
+                        {"Two Goal Side Fill", &twoGoalSideFill},
+                        {"Linear PID Movement", &linearPidMovementTest},
+                        {"Turn PID Movement", &turnPidMovementTest}, 
                        });
 // linear_pid_movement
 rd::Console console;
@@ -20,23 +23,18 @@ rd::Console console;
 pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 
 // motor groups
-pros::MotorGroup leftMotors({-14, -17, -19},
+pros::MotorGroup leftMotors({17, -3, 18},
                             pros::MotorGearset::blue);
-pros::MotorGroup rightMotors({18, 21, 16}, pros::MotorGearset::blue);
-pros::Optical intakeStage1ColorSensor(6);
-pros::Optical intakeStage2ColorSensor(3);
-pros::Imu imu(15);
+pros::MotorGroup rightMotors({-1, 6, -9}, pros::MotorGearset::blue);
+pros::Optical firstRingColorSensor(3);
+pros::Imu imu(7);
 
-int STAGE1_INTAKE_PORT = 11;
-int STAGE2_INTAKE_PORT = 8;
-pros::Motor lowIntakeMotor(STAGE1_INTAKE_PORT);
-pros::Motor highIntakeMotor(STAGE2_INTAKE_PORT);
+int INTAKE_MOTOR_PORT = 19;
+int DUMP_TRUCK_MOTOR_PORT = 10;
+pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
+pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
 
-pros::adi::DigitalOut backClampPnuematic('E');
-pros::adi::DigitalOut wiperPneumatic('B');
-pros::adi::DigitalOut climbArms('H');
-int isWiperTaskRunning = 0;
-int Wiper_state = 0;
+pros::adi::DigitalOut backClampPnuematic('H');
                               
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -110,49 +108,16 @@ const int BLUE_SIDE_AUTON = -1;
 int autonSideDetected = RED_SIDE_AUTON;
 
 // Function to cycle through the color states based on the current hue
-void updateColorState()
-{
-   int colorDistance = (int)intakeStage1ColorSensor.get_proximity();
-
-   if (colorDistance < 100)
-   {
-      currentColorState = NO_COLOR;
-      return;
-   }
-
-   int hue = (int)intakeStage1ColorSensor.get_hue(); // Get the current hue from the sensor
-
-   // Check the hue range and update the state
-   if (hue >= 0 && hue <= 20 )
-   {
-      currentColorState = RED;
-   }
-   else if (hue >= 140 && hue <= 240)
-   {
-      currentColorState = BLUE;
-   }
-   else if (hue >= 300 && hue <= 340)
-   {
-      currentColorState = RED;
-   }
-   
-   else
-   {
-      currentColorState = NO_COLOR;
-   }
-}
-
-// Function to cycle through the color states based on the current hue
 void getAutonColorState()
 {
-   int colorDistance = (int)intakeStage2ColorSensor.get_proximity();
+   int colorDistance = (int)firstRingColorSensor.get_proximity();
 
    if (colorDistance < 100)
    {
       return;
    }
 
-   int hue = (int)intakeStage2ColorSensor.get_hue(); // Get the current hue from the sensor
+   int hue = (int)firstRingColorSensor.get_hue(); // Get the current hue from the sensor
 
    // Check the hue range and update the state
    if (hue >= 0 && hue <= 20)
@@ -255,10 +220,6 @@ void autonomous()
 void opcontrol()
 {
    int backClampState = 0;
-   int autoWiperState = 0;
-   int autoWiperColor = RED;
-   int climbArmsState = 0;
-   pros::Task wiper_task(do_wiper);
    while (true)
    {
       // get left y and right x positions
@@ -268,74 +229,29 @@ void opcontrol()
       // move the robot
       chassis.curvature(leftY, rightX);
 
-      if (masterController.get_digital_new_press(DIGITAL_Y))
-      {
-         if (autoWiperState == 0)
-         {
-            autoWiperState = 1;
-            intakeStage1ColorSensor.set_led_pwm(255);
-         }
-         else
-         {
-            autoWiperState = 0;
-            intakeStage1ColorSensor.set_led_pwm(0);
-         }
-      }
-      if (masterController.get_digital_new_press(DIGITAL_DOWN))
-      {
-         if (autoWiperColor == RED)
-         {
-            autoWiperColor = BLUE;
-         }
-         else
-         {
-            autoWiperColor = RED;
-         }
-      }
-
-      // The wiper takes some time, we want to still control the
-      // robot while the wiper is running so we set it up as a task
-      // and make sure that only 1 task is running at a time
-      if (autoWiperState != 0 && isWiperTaskRunning == 0)
-      {
-         updateColorState();
-         if (currentColorState == autoWiperColor)
-         {
-            isWiperTaskRunning = 1;
-         }
-      }
-      else
-      {
-         currentColorState = NO_COLOR;
-      }
-
       if (masterController.get_digital(DIGITAL_R1))
       {
-         if(isWiperTaskRunning == 0 && Wiper_state == 0)
-         {
-            lowIntakeMotor.move_velocity(127);
-         }
-         lowIntakeMotor.move_velocity(127);
+         intakeMotor.move_velocity(-127);
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
-         lowIntakeMotor.move_velocity(-127);
+         intakeMotor.move_velocity(127);
       }
       else
       {
-         lowIntakeMotor.move_velocity(0);
+         intakeMotor.move_velocity(0);
       }
       if (masterController.get_digital(DIGITAL_L1))
       {
-         highIntakeMotor.move_velocity(127);
+         dumpTruckMotor.move_velocity(-127);
       }
       else if (masterController.get_digital(DIGITAL_L2))
       {
-         highIntakeMotor.move_velocity(-127);
+         dumpTruckMotor.move_velocity(127);
       }
       else
       {
-         highIntakeMotor.move_velocity(0);
+         dumpTruckMotor.move_velocity(0);
       }
 
       if (masterController.get_digital_new_press(DIGITAL_A))
@@ -349,32 +265,6 @@ void opcontrol()
          {
             backClampState = 0;
          }
-      }
-
-      if (masterController.get_digital_new_press(DIGITAL_B))
-      {
-         wiperPneumatic.set_value(Wiper_state);
-         if (Wiper_state == 0)
-         {
-            Wiper_state = 1;
-         }
-         else
-         {
-            Wiper_state = 0;
-         }
-      }
-
-      if (masterController.get_digital_new_press(DIGITAL_UP))
-      {
-         if(climbArmsState == 0)
-         {
-            climbArmsState = 1;
-         }
-         else
-         {
-            climbArmsState = 0;
-         }
-         climbArms.set_value(climbArmsState);
       }
 
       // delay to save resources
