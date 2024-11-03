@@ -26,13 +26,14 @@ pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup leftMotors({17, -3, 18},
                             pros::MotorGearset::blue);
 pros::MotorGroup rightMotors({-1, 6, -9}, pros::MotorGearset::blue);
-pros::Optical firstRingColorSensor(3);
+pros::Optical firstRingColorSensor(21);
 pros::Imu imu(7);
 
-int INTAKE_MOTOR_PORT = 19;
+int INTAKE_MOTOR_PORT = 4;
 int DUMP_TRUCK_MOTOR_PORT = 10;
 pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
 pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
+
 
 pros::adi::DigitalOut backClampPnuematic('H');
                               
@@ -151,6 +152,8 @@ void initialize()
    chassis.calibrate();
    chassis.setPose(0, 0, 0);
 
+   intakeMotor.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+
    console.println("Initializing robot...Done!");
 }
 
@@ -231,11 +234,11 @@ void opcontrol()
 
       if (masterController.get_digital(DIGITAL_R1))
       {
-         intakeMotor.move_velocity(-127);
+         intakeMotor.move_velocity(-200);
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
-         intakeMotor.move_velocity(127);
+         intakeMotor.move_velocity(200);
       }
       else
       {
