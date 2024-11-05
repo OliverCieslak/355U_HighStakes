@@ -46,25 +46,25 @@ lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
 );
 
 // lateral motion controller
-lemlib::ControllerSettings linearController(13,   // proportional gain (kP)
+lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             0,   // integral gain (kI)
-                                            3,   // derivative gain (kD)
+                                            1575,   // derivative gain (kD)
                                             3,   // anti windup
-                                            1, // small error range, in inches
-                                            100, // small error range timeout, in milliseconds
-                                            3, // large error range, in inches
+                                            1,   // small error range, in inches
+                                            100,  // small error range timeout, in milliseconds
+                                            3,   // large error range, in inches
                                             500, // large error range timeout, in milliseconds
-                                            10   // maximum acceleration (slew)
+                                            127   // maximum acceleration (slew)
 );
 
 // angular motion controller
-lemlib::ControllerSettings angularController(1.7, // proportional gain (kP)
+lemlib::ControllerSettings angularController(1.8, // proportional gain (kP)
                                              0,   // integral gain (kI)
                                              10,  // derivative gain (kD)
                                              3,   // anti windup
-                                             .5,  // small error range, in degrees
+                                             1,  // small error range, in degrees
                                              100, // small error range timeout, in milliseconds
-                                             1,   // large error range, in degrees
+                                             3,   // large error range, in degrees
                                              500, // large error range timeout, in milliseconds
                                              0    // maximum acceleration (slew)
 );
@@ -112,20 +112,21 @@ int autonSideDetected = RED_SIDE_AUTON;
 void getAutonColorState()
 {
    int colorDistance = (int)firstRingColorSensor.get_proximity();
-
+   printf("Color Distance: %d\n", colorDistance);
    if (colorDistance < 100)
    {
       return;
    }
 
    int hue = (int)firstRingColorSensor.get_hue(); // Get the current hue from the sensor
+   printf("Color Hue: %d\n", hue);
 
    // Check the hue range and update the state
    if (hue >= 0 && hue <= 20)
    {
       autonSideDetected = RED_SIDE_AUTON;
    }
-   else if (hue >= 198 && hue <= 240)
+   else if (hue >= 180 && hue <= 240)
    {
       autonSideDetected = BLUE_SIDE_AUTON;
    }

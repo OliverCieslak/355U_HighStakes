@@ -148,7 +148,7 @@ void linearPidMovementTest()
     lemlib::Pose start_pose = chassis.getPose();
     printf("Starting pose: x:%.1f, y:%.1f, h:%.1f\n", start_pose.x, start_pose.y, start_pose.theta);
     // move 24" forwards
-    chassis.moveToPoint(0, 12, 10000);
+    chassis.moveToPoint(0, 48, 10000, {.forwards = true, .maxSpeed = 80});
     chassis.waitUntilDone();
     chassis.cancelAllMotions();
 
@@ -171,42 +171,6 @@ void linearPidMovementTest()
     console.println(buffer);
     printf(buffer);
 
-
-    pros::delay(500); // Need to wait for odom to sync
-    pose = chassis.getPose();
-    end_heading = imu.get_heading();
-    distance_travelled = pose.distance(start_pose);
-    heading_change = pose.theta - start_pose.theta;
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
-    console.println(buffer);
-    printf(buffer);
-
-    pros::delay(500); // Need to wait for odom to sync
-    pose = chassis.getPose();
-    end_heading = imu.get_heading();
-    distance_travelled = pose.distance(start_pose);
-    heading_change = pose.theta - start_pose.theta;
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
-    console.println(buffer);
-    printf(buffer);
-
-    pros::delay(500); // Need to wait for odom to sync
-    pose = chassis.getPose();
-    end_heading = imu.get_heading();
-    distance_travelled = pose.distance(start_pose);
-    heading_change = pose.theta - start_pose.theta;
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
-    console.println(buffer);
-    printf(buffer);
-
-    pros::delay(500); // Need to wait for odom to sync
-    pose = chassis.getPose();
-    end_heading = imu.get_heading();
-    distance_travelled = pose.distance(start_pose);
-    heading_change = pose.theta - start_pose.theta;
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
-    console.println(buffer);
-    printf(buffer);
 }
 
 void turnPidMovementTest()
@@ -216,14 +180,16 @@ void turnPidMovementTest()
     chassis.setPose(0, 0, 0);
     pros::delay(200);
     // turn to face heading 90 with a very long timeout
-    chassis.turnToHeading(90, 100000);
-    pros::delay(500); // Need to wait for odom to sync
+    chassis.turnToHeading(180, 10000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
+    pros::delay(750); // Need to wait for odom to sync
 
     lemlib::Pose pose = chassis.getPose();
     double end_heading = imu.get_heading();
     char buffer[100];
-    sprintf(buffer, "x: %.1f, y: %.1f, h: %.1f, eh: %.1f", pose.x, pose.y, pose.theta, end_heading);
+    sprintf(buffer, "x: %.1f, y: %.1f, h: %.1f, eh: %.1f", pose.x, pose.y, pose.theta, end_heading - start_heading);
     console.println(buffer);
+    printf(buffer);
+    printf("\n");
 }
 
 void goalFill() //negative side for quals
