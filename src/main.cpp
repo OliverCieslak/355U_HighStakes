@@ -3,16 +3,14 @@
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "autons.h"
 
-
-
 rd::Selector selector({
                         {"Simple Alliance", &simpleAllianceStake},
                         {"Single MoGo", &simpleSingleMogo},
-                        // {"Goal Rush", &goalRushAuton},
-                        {"Auton 1", &simpleAuton},
-                        {"Skills Run", &skills},
+                        {"Qual Goal Rush", &qualsGoalRushAuton},
                         {"Goal Fill", &goalFill},
                         {"Two Goal Side Fill", &twoGoalSideFill},
+                        {"Auton 1", &simpleAuton},
+                        {"Skills Run", &skills},
                         {"Linear PID Movement", &linearPidMovementTest},
                         {"Turn PID Movement", &turnPidMovementTest}, 
                        });
@@ -33,10 +31,10 @@ int INTAKE_MOTOR_PORT = 4;
 int DUMP_TRUCK_MOTOR_PORT = 10;
 pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
 pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
-
-
+pros::adi::DigitalOut liftpnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
-                              
+pros::Distance dSensor(12);
+
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
                               11.0,
@@ -48,13 +46,13 @@ lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
 // lateral motion controller
 lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             0,   // integral gain (kI)
-                                            1575,   // derivative gain (kD)
+                                            750,   // derivative gain (kD)
                                             3,   // anti windup
                                             1,   // small error range, in inches
-                                            100,  // small error range timeout, in milliseconds
+                                            60,  // small error range timeout, in milliseconds
                                             3,   // large error range, in inches
-                                            500, // large error range timeout, in milliseconds
-                                            127   // maximum acceleration (slew)
+                                            250, // large error range timeout, in milliseconds
+                                            70   // maximum acceleration (slew)
 );
 
 // angular motion controller
@@ -147,13 +145,14 @@ lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors
  */
 void initialize()
 {
+   printf("Initializing robot...\n");
    console.println("Initializing robot...");
    chassis.setPose(0, 0, 0);
    chassis.cancelAllMotions();
    chassis.calibrate();
    chassis.setPose(0, 0, 0);
 
-   intakeMotor.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD); 
+   dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST); 
 
    console.println("Initializing robot...Done!");
 }
@@ -163,7 +162,9 @@ void initialize()
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() {
+   printf("Disabled robot...\n");
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -174,7 +175,39 @@ void disabled() {}
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {
+   printf("Initializing competition...\n");
+   getAutonColorState();
+   // TODO - Start the particle filter here where we can get the initial position of the based on the auton
+   // selector file.
+   const char *file_name = "/usd/rd_auton.txt"; // RoboDash file
+	FILE *save_file;
+	save_file = fopen(file_name, "r");
+	if (!save_file) return;
+
+	// Read contents
+	char line[256];
+	char saved_selector[256];
+	char saved_name[256];
+
+   // Should only really be 1 of these
+	while (fgets(line, 256, save_file)) {
+		sscanf(line, "%[^:]: %[^\n\0]", saved_selector, saved_name);
+	}
+
+   fclose(save_file);
+   printf("Selected auton: %s\n", saved_name);
+
+   // TODO - Based on the saved_name and the color sensor, we can determine the auton side and starting position
+   // to initialize the particle filter with.
+
+   // We can get the distance from the sensors here to start the particle filter with
+   /*
+   int d = (int)dSensor.get_distance();
+   printf("competition_initialize Distance: %d\n", d);
+   */
+
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -270,7 +303,12 @@ void opcontrol()
             backClampState = 0;
          }
       }
-
+      static bool liftState = false;
+      if (masterController.get_digital_new_press(DIGITAL_DOWN))
+      {
+         liftState = !liftState;
+         liftpnuematic.set_value(liftState);
+      }
       // delay to save resources
       pros::delay(20);
    } // Run for 20 ms then update

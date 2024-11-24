@@ -1,6 +1,9 @@
+#include "globals.h"
+#include "lemlib/api.hpp"
+#include "api.h"
 #pragma once
 
-void goalRushAuton();
+void qualsGoalRushAuton();
 void simpleAuton();
 void skills();
 
@@ -12,3 +15,5 @@ void twoGoalSideFill();
 
 void simpleAllianceStake();
 void simpleSingleMogo();
+
+void dumpTruckScore(pros::Motor *dumpTruckMotor);
