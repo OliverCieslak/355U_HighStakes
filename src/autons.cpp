@@ -141,7 +141,7 @@ void goalFill() //negative side for quals
 
     chassis.moveToPoint(0 * autonSideDetected, -15, 4000 ,{.forwards = false, .maxSpeed = 50}, false);
     pros::delay(50);
-    chassis.moveToPoint(0 * autonSideDetected, -5, 2000 ,{.forwards = true, .maxSpeed = 5v0}, false); 
+    chassis.moveToPoint(0 * autonSideDetected, -5, 2000 ,{.forwards = true, .maxSpeed = 50}, false); 
     pros::delay(50);
     chassis.swingToHeading(-90, DriveSide::LEFT, 2000, {.direction = AngularDirection::CW_CLOCKWISE});
     pros::delay(50);
