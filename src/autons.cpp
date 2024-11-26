@@ -57,13 +57,10 @@ void skills()
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);  
+    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
+    dumpTruckMotor.tare_position();
 
-    dumpTruckMotor.move_velocity(-127); //load ring on alliance stake
-    pros::delay(400);
-    dumpTruckMotor.move_velocity(127);
-    pros::delay(400);
-    dumpTruckMotor.move_velocity(0); 
+    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
     chassis.moveToPoint(0 * autonSideDetected, 15, 2000 ,{.forwards = true, .maxSpeed = 50}, false); 
     chassis.moveToPoint(20 * autonSideDetected, 9, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
     backClampPnuematic.set_value(1); 
@@ -203,66 +200,6 @@ void twoGoalSideFill() //elims goal rush
 
     chassis.moveToPoint(-54 * autonSideDetected, 0, 2000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up other stake
 
-    /*chassis.moveToPoint(0 * autonSideDetected, -15, 3000 ,{.forwards = false, .maxSpeed=80}, false);
-    //chassis.waitUntil(4);  
-
-    chassis.moveToPoint(-9 * autonSideDetected, -27, 3000 ,{.forwards = false, .maxSpeed=80}, false);
-    //chassis.waitUntil(4); 
-
-    backClampPnuematic.set_value(1); 
-    pros::delay(500);
-
-    intakeStage2.move_velocity(127);
-    pros::delay(1500);
-
-    intakeStage2.move_velocity(0);
-    pros::delay(500);
-
-    chassis.moveToPoint(-12 * autonSideDetected, -30, 3000 ,{.forwards = false, .maxSpeed=80}, false);
-    //chassis.waitUntil(1);  
-
-    chassis.moveToPoint(-22* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=80}, true);
-    chassis.waitUntil(10);  
-
-    intakeStage1.move_velocity(127); 
-
-    chassis.moveToPoint(-33* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=20}, true);
-    chassis.waitUntil(11);
-    pros::delay(100);
-
-    backClampPnuematic.set_value(0); 
-    pros::delay(300);
-
-    backClampPnuematic.set_value(1); 
-    pros::delay(1100);
-
-    intakeStage2.move_velocity(127);
-    pros::delay(1000);
-
-    //chassis.moveToPoint(-23* autonSideDetected, -30, 3000 ,{.forwards = false, .maxSpeed=80}, true);
-    //chassis.waitUntil(10);
-
-    intakeStage1.move_velocity(0);
-    pros::delay(500);
-
-    intakeStage2.move_velocity(0);
-
-    chassis.moveToPoint(-20* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=80}, true);
-    chassis.waitUntil(10);
-
-    intakeStage2.move_velocity(127);
-    pros::delay(1000);
-    intakeStage2.move_velocity(0);
-
-    backClampPnuematic.set_value(0); 
-    
-    chassis.moveToPoint(5 * autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=40}, true);
-    chassis.waitUntil(15); 
-
-    chassis.moveToPoint(10* autonSideDetected, -30, 3000 ,{.forwards = true, .maxSpeed=10}, true);
-    chassis.waitUntil(5);
-    */
-
 }
 
 void simpleAllianceStake() {
@@ -277,10 +214,7 @@ void simpleAllianceStake() {
 
     chassis.moveToPoint(0 * autonSideDetected, -12, 2000 ,{.forwards = false, .maxSpeed = 50}, false); 
     chassis.waitUntil(6);
-    dumpTruckMotor.move_velocity(-127);
-    pros::delay(500);
-    double currentDumpMotorPosition = dumpTruckMotor.get_position();
-    dumpTruckMotor.move_absolute(-1.0 * currentDumpMotorPosition, 127);
+    dumpTruckScore(&dumpTruckMotor);
 
     chassis.moveToPoint(4 * autonSideDetected, 20, 2000 ,{.forwards = true, .maxSpeed = 50}, false); 
 }
@@ -302,8 +236,18 @@ void simpleSingleMogo() {
 }
 
 void dumpTruckScore(pros::Motor *dumpTruckMotor) {
+    double startingDumpMotorPosition = dumpTruckMotor->get_position();
+    int startTime = pros::millis();
     dumpTruckMotor->move_velocity(-127);
     pros::delay(500);
     double currentDumpMotorPosition = dumpTruckMotor->get_position();
-    dumpTruckMotor->move_absolute(-1.0 * currentDumpMotorPosition, 127);
+    dumpTruckMotor->move_absolute(startingDumpMotorPosition, 127);
+    while (!((dumpTruckMotor->get_position() < startingDumpMotorPosition + 5) && (dumpTruckMotor->get_position() > startingDumpMotorPosition - 5))) {
+        // Continue running this loop as long as the motor is not within +-5 units of its goal
+        pros::delay(2);
+        // Exit the loop if the motor has been running for more than 500ms
+        if(pros::millis() - startTime > 500) {
+            break;
+        }
+    }    
 }

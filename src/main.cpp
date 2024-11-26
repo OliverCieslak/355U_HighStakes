@@ -4,15 +4,15 @@
 #include "autons.h"
 
 rd::Selector selector({
-                        {"Simple Alliance", &simpleAllianceStake},
-                        {"Single MoGo", &simpleSingleMogo},
-                        {"Qual Goal Rush", &qualsGoalRushAuton},
-                        {"Goal Fill", &goalFill},
-                        {"Two Goal Side Fill", &twoGoalSideFill},
-                        {"Auton 1", &simpleAuton},
-                        {"Skills Run", &skills},
-                        {"Linear PID Movement", &linearPidMovementTest},
-                        {"Turn PID Movement", &turnPidMovementTest}, 
+                        {SIMPLE_ALLIANCE, &simpleAllianceStake},
+                        {SINGLE_MOGO, &simpleSingleMogo},
+                        {QUAL_GOAL_RUSH, &qualsGoalRushAuton},
+                        {GOAL_FILL, &goalFill},
+                        {TWO_GOAL_SIDE_FILL, &twoGoalSideFill},
+                        {AUTON_ONE, &simpleAuton},
+                        {SKILLS_RUN, &skills},
+                        {LINEAR_PID_MOVEMENT, &linearPidMovementTest},
+                        {TURN_PID_MOVEMENT, &turnPidMovementTest}, 
                        });
 // linear_pid_movement
 rd::Console console;
@@ -152,7 +152,8 @@ void initialize()
    chassis.calibrate();
    chassis.setPose(0, 0, 0);
 
-   dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST); 
+   dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+   dumpTruckMotor.tare_position();
 
    console.println("Initializing robot...Done!");
 }
@@ -282,7 +283,7 @@ void opcontrol()
       {
          dumpTruckMotor.move_velocity(-127);
       }
-      else if (masterController.get_digital(DIGITAL_L2))
+      else if (masterController.get_digital(DIGITAL_L2) && dumpTruckMotor.get_position() > 0)
       {
          dumpTruckMotor.move_velocity(127);
       }
