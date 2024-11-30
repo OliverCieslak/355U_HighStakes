@@ -19,5 +19,6 @@ extern rd::Console console;
 extern pros::Imu imu;
 
 extern pros::adi::DigitalOut backClampPnuematic;
+extern pros::Distance backClampDistanceSensor;
 
 extern rd::Console console;

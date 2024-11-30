@@ -33,7 +33,7 @@ pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
 pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
 pros::adi::DigitalOut liftpnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
-pros::Distance dSensor(12);
+pros::Distance backClampDistanceSensor(12);
 
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -109,6 +109,8 @@ int autonSideDetected = RED_SIDE_AUTON;
 // Function to cycle through the color states based on the current hue
 void getAutonColorState()
 {
+   firstRingColorSensor.set_led_pwm(25);
+   pros::delay(100); // Wait for the sensor to stabilize
    int colorDistance = (int)firstRingColorSensor.get_proximity();
    printf("Color Distance: %d\n", colorDistance);
    if (colorDistance < 100)
@@ -199,15 +201,13 @@ void competition_initialize() {
    fclose(save_file);
    printf("Selected auton: %s\n", saved_name);
 
-   // TODO - Based on the saved_name and the color sensor, we can determine the auton side and starting position
-   // to initialize the particle filter with.
-
-   // We can get the distance from the sensors here to start the particle filter with
-   /*
-   int d = (int)dSensor.get_distance();
-   printf("competition_initialize Distance: %d\n", d);
-   */
-
+   // Initialize particle filter with starting pose based on auton
+   lemlib::Pose initialPose(autonSideDetected * 48, -48, lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
+   if (strcmp(saved_name, SIMPLE_ALLIANCE) == 0)
+   {
+      initialPose = lemlib::Pose(autonSideDetected * 48, 24, lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
+   }
+   // Add other auton cases...
 }
 
 /**
@@ -254,12 +254,12 @@ void autonomous()
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-
 void opcontrol()
 {
-   int backClampState = 0;
+   static int backClampState = 0;
    while (true)
    {
+      static bool liftState = false;
       // get left y and right x positions
       int leftY = masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
       int rightX = masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
@@ -279,13 +279,17 @@ void opcontrol()
       {
          intakeMotor.move_velocity(0);
       }
-      if (masterController.get_digital(DIGITAL_L1))
+      if (masterController.get_digital(DIGITAL_L1) && (int)dumpTruckMotor.get_position() > -790)
       {
          dumpTruckMotor.move_velocity(-127);
+         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
       }
-      else if (masterController.get_digital(DIGITAL_L2) && dumpTruckMotor.get_position() > 0)
+      else if (masterController.get_digital(DIGITAL_L2) && (
+                  (!liftState && dumpTruckMotor.get_position() < -10) ||
+                  (liftState && dumpTruckMotor.get_position() < -30)))
       {
          dumpTruckMotor.move_velocity(127);
+         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
       }
       else
       {
@@ -294,7 +298,6 @@ void opcontrol()
 
       if (masterController.get_digital_new_press(DIGITAL_A))
       {
-         backClampPnuematic.set_value(backClampState);
          if (backClampState == 0)
          {
             backClampState = 1;
@@ -303,10 +306,27 @@ void opcontrol()
          {
             backClampState = 0;
          }
+         backClampPnuematic.set_value(backClampState);
       }
-      static bool liftState = false;
+      if(backClampState == 0 && masterController.get_digital(DIGITAL_B))
+      {
+         if(backClampDistanceSensor.get() < 17)
+         {
+            backClampState = 1;
+            backClampPnuematic.set_value(backClampState);
+         }
+      }
       if (masterController.get_digital_new_press(DIGITAL_DOWN))
       {
+         printf("Dump Truck Position: %d\n", (int)dumpTruckMotor.get_position());
+         if((int)dumpTruckMotor.get_position() < -30)
+         {
+            dumpTruckMotor.move_absolute(-30, 200);
+         }
+         if(liftState) 
+         {
+            dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+         }
          liftState = !liftState;
          liftpnuematic.set_value(liftState);
       }

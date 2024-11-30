@@ -251,3 +251,10 @@ void dumpTruckScore(pros::Motor *dumpTruckMotor) {
         }
     }    
 }
+
+void doAutoclamp() {
+    while(backClampDistanceSensor.get_distance() > 15 || backClampDistanceSensor.get_distance() < 0) {
+        pros::delay(20);
+    }
+    backClampPnuematic.set_value(1);
+}

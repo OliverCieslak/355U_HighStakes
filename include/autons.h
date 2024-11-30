@@ -1,6 +1,8 @@
+#include "api.h"
 #include "globals.h"
 #include "lemlib/api.hpp"
-#include "api.h"
+#include "main.h"
+
 #pragma once
 
 #define SIMPLE_ALLIANCE "Simple Alliance"
@@ -27,3 +29,5 @@ void simpleAllianceStake();
 void simpleSingleMogo();
 
 void dumpTruckScore(pros::Motor *dumpTruckMotor);
+
+void doAutonclamp();
