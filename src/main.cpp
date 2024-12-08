@@ -2,15 +2,17 @@
 #include "robodash/api.h"
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "autons.h"
+#include "particle.hpp"  // Add this include
 
 rd::Selector selector({
                         {SIMPLE_ALLIANCE, &simpleAllianceStake},
                         {SINGLE_MOGO, &simpleSingleMogo},
-                        {QUAL_GOAL_RUSH, &qualsGoalRushAuton},
+                        {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
                         {GOAL_FILL, &goalFill},
                         {TWO_GOAL_SIDE_FILL, &twoGoalSideFill},
                         {AUTON_ONE, &simpleAuton},
-                        {SKILLS_RUN, &skills},
+                        {SAFE_SKILLS, &safeSkills},
+                        {SCORING_SKILLS, &scoringSkills},
                         {LINEAR_PID_MOVEMENT, &linearPidMovementTest},
                         {TURN_PID_MOVEMENT, &turnPidMovementTest}, 
                        });
@@ -33,7 +35,6 @@ pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
 pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
 pros::adi::DigitalOut liftpnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
-pros::Distance backClampDistanceSensor(12);
 
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -44,6 +45,7 @@ lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
 );
 
 // lateral motion controller
+/*
 lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             0,   // integral gain (kI)
                                             750,   // derivative gain (kD)
@@ -53,6 +55,17 @@ lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             3,   // large error range, in inches
                                             250, // large error range timeout, in milliseconds
                                             70   // maximum acceleration (slew)
+);
+*/
+lemlib::ControllerSettings linearController(20,   // proportional gain (kP)
+                                            0,   // integral gain (kI)
+                                            100,   // derivative gain (kD)
+                                            3,   // anti windup
+                                            1,   // small error range, in inches
+                                            60,  // small error range timeout, in milliseconds
+                                            3,   // large error range, in inches
+                                            250, // large error range timeout, in milliseconds
+                                            127   // maximum acceleration (slew)
 );
 
 // angular motion controller
@@ -105,6 +118,18 @@ ColorState currentColorState = NO_COLOR;
 const int RED_SIDE_AUTON = 1;
 const int BLUE_SIDE_AUTON = -1;
 int autonSideDetected = RED_SIDE_AUTON;
+
+pros::Distance backClampDistanceSensor(12);
+pros::Distance frontDistanceSensor(13);
+pros::Distance rightDistanceSensor(14);
+pros::Distance leftDistanceSensor(15);
+std::vector<ParticleFilter::SensorMount> sensorMounts = {
+    {&frontDistanceSensor, lemlib::Pose(6.5, 4.5, lemlib::degToRad(0))},
+    {&leftDistanceSensor, lemlib::Pose(7.5, 4.5, lemlib::degToRad(-90))},
+    {&rightDistanceSensor, lemlib::Pose(7.5, -4.5, lemlib::degToRad(90))},
+    {&backClampDistanceSensor, lemlib::Pose(-5.0, -0.5, lemlib::degToRad(180))}
+};
+ParticleFilter particleFilter(100, sensorMounts);
 
 // Function to cycle through the color states based on the current hue
 void getAutonColorState()
@@ -169,6 +194,84 @@ void disabled() {
    printf("Disabled robot...\n");
 }
 
+char auton_name_in_robodash_file[256];
+
+void displayParticleFilterInfo()
+{
+   char buffer[100];
+   if(particleFilter.isInitialized())
+   {
+      lemlib::Pose estimatedPose = particleFilter.getEstimatedPose();
+      sprintf(buffer, "P: %d, %d, %d\n", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
+      printf("%s\n", buffer);
+      masterController.print(0, 0, buffer);
+      pros::delay(50);
+   }
+   char side[5];
+   if(autonSideDetected == RED_SIDE_AUTON)
+   {
+      sprintf(side, "Red");
+   }
+   else
+   {
+      sprintf(side, "Blue");
+   }
+   sprintf(buffer, "%s %s\n", side, auton_name_in_robodash_file);
+   masterController.print(1, 0, buffer);
+   pros::delay(50);
+   sprintf(buffer, "Battery: %.2f percent\n", pros::battery::get_capacity());
+   masterController.print(2, 0, buffer);
+}
+
+extern pros::Task *trackingTask;
+
+void stopLemLibTrackingTask()
+{
+   if (trackingTask != nullptr)
+   {
+      trackingTask->remove();
+      delete trackingTask;
+      trackingTask = nullptr;
+   }
+}
+void startParticleFilter()
+{
+   stopLemLibTrackingTask();
+   //if(!particleFilter.isInitialized())
+   if(true)
+   {
+      getAutonColorState();
+      // Figure out which auton was selected by reading it from the file since
+      // RoboDash doesn't have a way to retrieve the selected auton
+      const char *file_name = "/usd/rd_auton.txt"; // RoboDash file
+      FILE *save_file;
+      save_file = fopen(file_name, "r");
+      if (!save_file) return;
+
+      // Read contents
+      char line[256];
+      char saved_selector[256];
+
+      // Should only really be 1 of these
+      while (fgets(line, 256, save_file)) {
+         sscanf(line, "%[^:]: %[^\n\0]", saved_selector, auton_name_in_robodash_file);
+      }
+
+      fclose(save_file);
+      printf("Selected auton: %s\n", auton_name_in_robodash_file);
+
+      // Initialize particle filter with starting pose based on auton
+      lemlib::Pose initialPose(autonSideDetected * 48, -48, autonSideDetected * lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
+      if (strcmp(auton_name_in_robodash_file, SIMPLE_ALLIANCE) == 0)
+      {
+         initialPose = lemlib::Pose(autonSideDetected * 48, 24, autonSideDetected *lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
+      }
+      chassis.setPose(initialPose);
+      particleFilter.initialize(initialPose, &chassis, 2.0, lemlib::degToRad(10));
+      particleFilter.start();
+   }
+}
+
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
  * Management System or the VEX Competition Switch. This is intended for
@@ -180,34 +283,48 @@ void disabled() {
  */
 void competition_initialize() {
    printf("Initializing competition...\n");
-   getAutonColorState();
-   // TODO - Start the particle filter here where we can get the initial position of the based on the auton
-   // selector file.
-   const char *file_name = "/usd/rd_auton.txt"; // RoboDash file
-	FILE *save_file;
-	save_file = fopen(file_name, "r");
-	if (!save_file) return;
-
-	// Read contents
-	char line[256];
-	char saved_selector[256];
-	char saved_name[256];
-
-   // Should only really be 1 of these
-	while (fgets(line, 256, save_file)) {
-		sscanf(line, "%[^:]: %[^\n\0]", saved_selector, saved_name);
-	}
-
-   fclose(save_file);
-   printf("Selected auton: %s\n", saved_name);
-
-   // Initialize particle filter with starting pose based on auton
-   lemlib::Pose initialPose(autonSideDetected * 48, -48, lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
-   if (strcmp(saved_name, SIMPLE_ALLIANCE) == 0)
-   {
-      initialPose = lemlib::Pose(autonSideDetected * 48, 24, lemlib::degToRad(autonSideDetected * 90)); // Modify based on auton selection
-   }
-   // Add other auton cases...
+/*
+   stopLemLibTrackingTask();
+   lemlib::Pose initialPose = lemlib::Pose(-48, -48, lemlib::degToRad(-90));
+   chassis.setPose(initialPose);
+   particleFilter.initialize(initialPose, &chassis, 2.0, lemlib::degToRad(5));
+   particleFilter.update(initialPose);
+   particleFilter.measurementUpdate();
+   particleFilter.resample();
+   //particleFilter.start();
+   //pros::delay(3000); // Wait for the particle filter to stabilize
+   //particleFilter.stop();
+   lemlib::Pose estimatedPose = particleFilter.getEstimatedPose();
+   double rdist = 0.0393701 * rightDistanceSensor.get_distance();
+   double bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   double fdist = 0.0393701 * frontDistanceSensor.get_distance();
+   double ldist = 0.0393701 * leftDistanceSensor.get_distance();
+   char buffer[100];
+   sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
+   printf("%s\n", buffer);
+   sprintf(buffer, "R: %.2f B: %.2f L: %.2f F: %.2f", rdist, bdist, ldist, fdist);
+   printf("%s\n", buffer);
+   Particle bestParticle = particleFilter.getBestParticle();
+   sprintf(buffer, "Best Particle: %d, %d, %d %d", (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (int)(1000000 * bestParticle.weight));
+   printf("%s\n", buffer);
+   lemlib::Pose sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(180));
+   double expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
+   sprintf(buffer, "Back Expected Distance: %f", expectedDistance);
+   printf("%s\n", buffer);
+   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(0));
+   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
+   sprintf(buffer, "Front Expected Distance: %f", expectedDistance);
+   printf("%s\n", buffer);
+   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(90));
+   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
+   sprintf(buffer, "Right Expected Distance: %f", expectedDistance);
+   printf("%s\n", buffer);
+   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(-90));
+   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
+   sprintf(buffer, "Left Expected Distance: %f", expectedDistance);
+   printf("%s\n", buffer);
+*/
+   printf("Initializing competition...Done!\n");
 }
 
 /**
@@ -226,9 +343,14 @@ void autonomous()
    char buffer[100];
    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
    u_int64_t start = pros::millis();
+   if(!particleFilter.isInitialized()) {
+      console.println("Particle filter not initialized!");
+      printf("Particle filter not initialized!\n");
+      startParticleFilter();
+   }
+
    console.println("Running auton...");
    printf("Running auton...\n");
-   getAutonColorState();
    sprintf(buffer, "Auton side detected: %d\n", autonSideDetected);
    console.println(buffer);
    printf(buffer);
@@ -257,6 +379,8 @@ void autonomous()
 void opcontrol()
 {
    static int backClampState = 0;
+   chassis.setBrakeMode(pros::E_MOTOR_BRAKE_COAST);
+
    while (true)
    {
       static bool liftState = false;
@@ -289,7 +413,7 @@ void opcontrol()
                   (liftState && dumpTruckMotor.get_position() < -30)))
       {
          dumpTruckMotor.move_velocity(127);
-         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
       }
       else
       {

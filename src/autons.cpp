@@ -1,6 +1,54 @@
 #include "autons.h"
 #include "globals.h"
 
+int MIN_INTAKE_TIME = 500;
+int POST_INTAKE_DELAY = 500;
+int MAX_INTAKE_TIME = 3000;
+
+void qualsGoalRushAutonTweaked()
+{
+    // start with 2nd notch on seam farther from the wall
+    chassis.cancelAllMotions();
+    chassis.setPose(0, 0, 0);
+    lemlib::Pose start_pose = chassis.getPose();
+    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
+    //backClampPnuematic.set_value(1);
+    chassis.moveToPoint(0 * autonSideDetected, -28, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(6.5 * autonSideDetected, -42, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
+
+    backClampPnuematic.set_value(1);
+    pros::delay(250);
+    dumpTruckScore(&dumpTruckMotor); 
+
+    // Create a pros::Task to run the intakeUntilRing function
+    pros::Task intakeTask(intakeUntilRing);
+    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
+    chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
+
+    chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
+    chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
+    if(firstRingColorSensor.get_proximity() > 100)  // No ring detected
+    {
+        intakeMotor.move_velocity(-127);
+    }
+    else
+    {
+        intakeMotor.move_velocity(127);  // Spit out Blue Ring...
+    }
+    backClampPnuematic.set_value(0);  // Drop middle stake 
+    chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
+
+    chassis.turnToPoint(38 * autonSideDetected, -26, 1000 ,{.forwards = false}, false); 
+    chassis.moveToPoint(38 * autonSideDetected, -26, 2500 ,{.forwards = false, .maxSpeed = 30}, false); 
+    intakeMotor.move_velocity(0);
+    backClampPnuematic.set_value(1);
+    pros::delay(100);
+    dumpTruckScore(&dumpTruckMotor); 
+
+    // Touch ladder
+    chassis.moveToPoint(36 * autonSideDetected, -40, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
+}
+
 void qualsGoalRushAuton()
 {
     pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
@@ -10,19 +58,17 @@ void qualsGoalRushAuton()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
-
+    //backClampPnuematic.set_value(1);
     chassis.moveToPoint(0 * autonSideDetected, -30, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
     chassis.moveToPoint(6 * autonSideDetected, -43, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
 
-    backClampPnuematic.set_value(1); //pick up middle stake 
+    backClampPnuematic.set_value(1); 
     dumpTruckScore(&dumpTruckMotor); 
 
     intakeMotor.move_velocity(-127); //intake ring 
     chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
-    pros::delay(750); 
-    intakeMotor.move_velocity(0); 
-    dumpTruckScore(&dumpTruckMotor); 
+    pros::delay(900); 
 
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
     chassis.moveToPoint(12 * autonSideDetected, -5, 2000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to close ring 
@@ -30,13 +76,14 @@ void qualsGoalRushAuton()
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
 
     //chassis.turnToHeading(90 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}); 
-    chassis.moveToPoint(33 * autonSideDetected, -26, 3000 ,{.forwards = false, .maxSpeed = 70}, false); 
+    chassis.moveToPoint(24 * autonSideDetected, -26, 3000 ,{.forwards = false, .maxSpeed = 70}, false); 
     backClampPnuematic.set_value(1); 
+    intakeMotor.move_velocity(0); 
     pros::delay(100); 
     dumpTruckScore(&dumpTruckMotor); 
 
     // Touch ladder
-    chassis.moveToPoint(50 * autonSideDetected, -31, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
+    chassis.moveToPoint(36 * autonSideDetected, -40, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 
 }
 
@@ -47,98 +94,17 @@ void simpleAuton()
     chassis.moveToPoint(0 * autonSideDetected, 50, 4000 ,{.forwards = true, .maxSpeed = 80}, true);
 }
 
-void skills()
-{
-    pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
-    pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
-
-    console.println("Skills");
-    printf("Skills\n");
-    chassis.cancelAllMotions();
-    chassis.setPose(0, 0, 0);
-    lemlib::Pose start_pose = chassis.getPose();
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    dumpTruckMotor.tare_position();
-    dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-
-    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
-    chassis.moveToPoint(0 * autonSideDetected, 15, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
-    chassis.moveToPoint(20 * autonSideDetected, 12, 2000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get first Mogo
-    chassis.moveToPoint(64 * autonSideDetected, -5, 2000 ,{.forwards = false, .maxSpeed = 50}, false); 
-    backClampPnuematic.set_value(0);  // Drop first Mogo in corner
-    chassis.moveToPoint(20 * autonSideDetected, 12, 3000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-24 * autonSideDetected, 12, 3000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get second Mogo
-    chassis.moveToPoint(-55 * autonSideDetected, -5, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(0);  // Drop second Mogo in corner
-    chassis.moveToPoint(-48 * autonSideDetected, 12, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
-    // Long drive to 3rd Mogo
-    chassis.moveToPoint(-48 * autonSideDetected, 72, 7000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(0 * autonSideDetected, 112, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get 3rd Mogo (by blue alliance stake)
-    chassis.moveToPoint(-48 * autonSideDetected, 108, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-65 * autonSideDetected, 112, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(0);  // Drop 3rd Mogo in corner
-    // Long drive to 4th Mogo
-    chassis.moveToPoint(-40 * autonSideDetected, 108, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(0 * autonSideDetected, 108, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    chassis.moveToPoint(55 * autonSideDetected, 118, 7000 ,{.forwards = true, .maxSpeed = 70}, false);
-    // Make sure 3rd goal is in corner...
-    chassis.moveToPoint(-65 * autonSideDetected, 116, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-}
-
-void skillsCorners()
-{
-    pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
-    pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
-
-    console.println("Skills");
-    printf("Skills\n");
-    chassis.cancelAllMotions();
-    chassis.setPose(0, 0, 0);
-    lemlib::Pose start_pose = chassis.getPose();
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    dumpTruckMotor.tare_position();
-    dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-
-    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
-    chassis.moveToPoint(0 * autonSideDetected, 15, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
-    chassis.moveToPoint(20 * autonSideDetected, 12, 2000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get first Mogo
-    chassis.moveToPoint(64 * autonSideDetected, -5, 2000 ,{.forwards = false, .maxSpeed = 50}, false); 
-    backClampPnuematic.set_value(0);  // Drop first Mogo in corner
-    chassis.moveToPoint(20 * autonSideDetected, 12, 3000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-24 * autonSideDetected, 12, 3000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get second Mogo
-    chassis.moveToPoint(-55 * autonSideDetected, -5, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(0);  // Drop second Mogo in corner
-    chassis.moveToPoint(-48 * autonSideDetected, 12, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
-    // Long drive to 3rd Mogo
-    chassis.moveToPoint(-48 * autonSideDetected, 72, 7000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-36 * autonSideDetected, 112, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(1);  // Get 3rd Mogo
-    chassis.moveToPoint(-48 * autonSideDetected, 108, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-65 * autonSideDetected, 112, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    backClampPnuematic.set_value(0);  // Drop 3rd Mogo in corner
-    // Long drive to 4th Mogo
-    chassis.moveToPoint(-40 * autonSideDetected, 108, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(0 * autonSideDetected, 108, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-    chassis.moveToPoint(55 * autonSideDetected, 118, 7000 ,{.forwards = true, .maxSpeed = 70}, false);
-    // Make sure 3rd goal is in corner...
-    chassis.moveToPoint(-65 * autonSideDetected, 116, 7000 ,{.forwards = false, .maxSpeed = 70}, false);
-}
-
 void linearPidMovementTest()
 {
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
     double start_heading = imu.get_heading();
     // set position to x:0, y:0, heading:0
     chassis.cancelAllMotions();
+    chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     printf("Starting pose: x:%.1f, y:%.1f, h:%.1f\n", start_pose.x, start_pose.y, start_pose.theta);
     // move 24" forwards
-    chassis.moveToPoint(0, 48, 10000, {.forwards = true, .maxSpeed = 80});
+    chassis.moveToPoint(0, -48, 10000, {.forwards = false, .maxSpeed = 70});
     chassis.waitUntilDone();
     chassis.cancelAllMotions();
 
@@ -148,19 +114,20 @@ void linearPidMovementTest()
     float heading_change = pose.theta - start_pose.theta;
 
     char buffer[100];
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
+    sprintf(buffer, "d:%.0f,h:%.1f\n", distance_travelled, pose.theta);
     console.println(buffer);
     printf(buffer);
+    masterController.print(0, 0, buffer);
 
     pros::delay(500); // Need to wait for odom to sync
     pose = chassis.getPose();
     end_heading = imu.get_heading();
     distance_travelled = pose.distance(start_pose);
     heading_change = pose.theta - start_pose.theta;
-    sprintf(buffer, "d:%.1f,x:%.1f,y:%.1f,h:%.1f,eh:%.1f,dh:%.1f\n", distance_travelled, pose.x, pose.y, pose.theta, end_heading, heading_change);
+    sprintf(buffer, "d:%.0f,h:%.1f\n", distance_travelled, pose.theta);
     console.println(buffer);
     printf(buffer);
-
+    masterController.print(1, 0, buffer);
 }
 
 void turnPidMovementTest()
@@ -305,7 +272,8 @@ void dumpTruckScore(pros::Motor *dumpTruckMotor) {
         if(pros::millis() - startTime > 500) {
             break;
         }
-    }    
+    }
+    dumpTruckMotor->set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
 }
 
 void doAutoclamp() {
@@ -313,4 +281,15 @@ void doAutoclamp() {
         pros::delay(20);
     }
     backClampPnuematic.set_value(1);
+}
+
+void intakeUntilRing() {
+    int startTime = pros::millis();
+    intakeMotor.move_velocity(-127);
+    pros::delay(MIN_INTAKE_TIME);
+    while(firstRingColorSensor.get_proximity() < 100 && ((pros::millis() - startTime) < MAX_INTAKE_TIME)) {
+        pros::delay(20);
+    }
+    pros::delay(POST_INTAKE_DELAY);
+    intakeMotor.move_velocity(0);
 }
