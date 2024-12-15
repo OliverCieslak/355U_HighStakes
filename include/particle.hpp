@@ -11,8 +11,11 @@ class Particle {
     public:
         lemlib::Pose pose;
         double weight;
+        unsigned int id; // Unique identifier
 
-        Particle(lemlib::Pose p, double w = 1.0) : pose(p), weight(w) {}
+        // Modify constructor to include id
+        Particle(unsigned int id, lemlib::Pose p, double w = 1.0) 
+            : id(id), pose(p), weight(w) {}
 };
 
 class ParticleFilter {
@@ -56,6 +59,10 @@ class ParticleFilter {
         
         // Calculate expected distance to nearest wall given a pose
         double getExpectedWallDistance(const lemlib::Pose& sensorPose) const;
+
+        // Add a function to print all particles
+        void printParticles() const;
+        
     private:
         size_t numParticles;
         std::vector<Particle> particles;
@@ -78,7 +85,7 @@ class ParticleFilter {
         static constexpr double LOW_RANGE_ACCURACY_MM = 15.0;
         static constexpr double HIGH_RANGE_ACCURACY_PERCENT = 0.05;
         static constexpr double MAX_ANGLE_RAD = 0.26;
-        static constexpr double SENSOR_FOV_RAD = lemlib::degToRad(10);
+        static constexpr double SENSOR_FOV_RAD = lemlib::degToRad(5);
         
         // Use the Vex Distance Sensor product spec to determine sensor variance
         static double getSensorVariance(double distance_mm) {
@@ -123,4 +130,12 @@ class ParticleFilter {
         void addReading(size_t sensorIndex, double reading);
 
         lemlib::Chassis* chassis = nullptr;  // Add chassis pointer
+
+        // Add these members
+        uint32_t lastUpdateTime = 0;
+        
+        // Noise parameters
+        static constexpr double BASE_POS_NOISE = 0.001;  // Very small base noise when stationary
+        static constexpr double BASE_ANGLE_NOISE = 0.0001; // Very small base angle noise
+        static constexpr double VELOCITY_NOISE_FACTOR = 0.1; // Scale noise with velocity
 };

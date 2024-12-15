@@ -21,26 +21,22 @@ void qualsGoalRushAutonTweaked()
     dumpTruckScore(&dumpTruckMotor); 
 
     // Create a pros::Task to run the intakeUntilRing function
-    pros::Task intakeTask(intakeUntilRing);
+    
+    intakeMotor.move_velocity(-127);
     chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
 
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
+    intakeMotor.move_velocity(0);
     chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
-    if(firstRingColorSensor.get_proximity() > 100)  // No ring detected
-    {
-        intakeMotor.move_velocity(-127);
-    }
-    else
-    {
-        intakeMotor.move_velocity(127);  // Spit out Blue Ring...
-    }
+     
     backClampPnuematic.set_value(0);  // Drop middle stake 
+    intakeMotor.move_velocity(0);
     chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
 
     chassis.turnToPoint(38 * autonSideDetected, -26, 1000 ,{.forwards = false}, false); 
     chassis.moveToPoint(38 * autonSideDetected, -26, 2500 ,{.forwards = false, .maxSpeed = 30}, false); 
-    intakeMotor.move_velocity(0);
+    
     backClampPnuematic.set_value(1);
     pros::delay(100);
     dumpTruckScore(&dumpTruckMotor); 
@@ -159,22 +155,17 @@ void goalFill() //negative side for quals
     lemlib::Pose start_pose = chassis.getPose(); 
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
 
-    chassis.moveToPoint(0 * autonSideDetected, -15, 4000 ,{.forwards = false, .maxSpeed = 50}, false);
-    pros::delay(50);
-    chassis.moveToPoint(0 * autonSideDetected, -5, 2000 ,{.forwards = true, .maxSpeed = 50}, false); 
-    pros::delay(50);
-    chassis.swingToHeading(-90, DriveSide::LEFT, 2000, {.direction = AngularDirection::CW_CLOCKWISE});
-    pros::delay(50);
-    //dumpTruckScore(&dumpTruckMotor); //not working temporarily; replacemnt below
-    dumpTruckMotor.move_velocity(-127); //load ring on alliance stake
-    pros::delay(400);
-    dumpTruckMotor.move_velocity(127);
-    pros::delay(400);
-    dumpTruckMotor.move_velocity(0);
+    chassis.moveToPoint(0 * autonSideDetected, -7, 4000 ,{.forwards = false, .maxSpeed = 50}, false);
+    chassis.turnToHeading(90 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}); 
+    pros::delay(300); 
+    chassis.moveToPoint(-5 * autonSideDetected, -7, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
+    dumpTruckScore(&dumpTruckMotor); 
+    pros::delay(300); 
 
-    chassis.moveToPoint(5 * autonSideDetected, 0, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(25 * autonSideDetected, 15, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(30 * autonSideDetected, 15, 2000 ,{.forwards = false, .maxSpeed = 70}, false);
     backClampPnuematic.set_value(1);
+    //chassis.moveToPoint(20 * autonSideDetected, 15, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
+    
 
 }
 
@@ -256,23 +247,16 @@ void simpleSingleMogo() {
     chassis.waitUntil(22);
     backClampPnuematic.set_value(1);
     dumpTruckScore(&dumpTruckMotor);
+    pros::delay(500); 
+    chassis.moveToPoint(-15 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
 }
 
 void dumpTruckScore(pros::Motor *dumpTruckMotor) {
-    double startingDumpMotorPosition = dumpTruckMotor->get_position();
+    dumpTruckMotor->tare_position();
     int startTime = pros::millis();
-    dumpTruckMotor->move_velocity(-127);
+    dumpTruckMotor->move_voltage(-12000);
     pros::delay(500);
-    double currentDumpMotorPosition = dumpTruckMotor->get_position();
-    dumpTruckMotor->move_absolute(startingDumpMotorPosition, 127);
-    while (!((dumpTruckMotor->get_position() < startingDumpMotorPosition + 5) && (dumpTruckMotor->get_position() > startingDumpMotorPosition - 5))) {
-        // Continue running this loop as long as the motor is not within +-5 units of its goal
-        pros::delay(2);
-        // Exit the loop if the motor has been running for more than 500ms
-        if(pros::millis() - startTime > 500) {
-            break;
-        }
-    }
+    dumpTruckMotor->move_absolute(0, 127);
     dumpTruckMotor->set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
 }
 
@@ -285,11 +269,28 @@ void doAutoclamp() {
 
 void intakeUntilRing() {
     int startTime = pros::millis();
-    intakeMotor.move_velocity(-127);
+    intakeMotor.move_voltage(-127);
     pros::delay(MIN_INTAKE_TIME);
     while(firstRingColorSensor.get_proximity() < 100 && ((pros::millis() - startTime) < MAX_INTAKE_TIME)) {
         pros::delay(20);
     }
     pros::delay(POST_INTAKE_DELAY);
-    intakeMotor.move_velocity(0);
+    intakeMotor.move_voltage(0);
+}
+
+void intakeStallDetection() {
+    int startTime = pros::millis();
+    intakeMotor.move_voltage(-12000);
+    pros::delay(MIN_INTAKE_TIME);
+    while((pros::millis() - startTime) < MAX_INTAKE_TIME) {
+        if(abs(intakeMotor.get_actual_velocity()) == 0) {
+            intakeMotor.move_voltage(12000);
+            pros::delay(100);
+            intakeMotor.move_voltage(-12000);
+        } else {
+            pros::delay(20);
+        }
+    }
+    pros::delay(POST_INTAKE_DELAY);
+    intakeMotor.move_voltage(0);
 }

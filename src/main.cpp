@@ -33,8 +33,9 @@ int INTAKE_MOTOR_PORT = 4;
 int DUMP_TRUCK_MOTOR_PORT = 10;
 pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
 pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
-pros::adi::DigitalOut liftpnuematic('G');
+pros::adi::DigitalOut liftPnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
+pros::adi::DigitalOut doinker('A');
 
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -124,10 +125,10 @@ pros::Distance frontDistanceSensor(13);
 pros::Distance rightDistanceSensor(14);
 pros::Distance leftDistanceSensor(15);
 std::vector<ParticleFilter::SensorMount> sensorMounts = {
-    {&frontDistanceSensor, lemlib::Pose(6.5, 4.5, lemlib::degToRad(0))},
-    {&leftDistanceSensor, lemlib::Pose(7.5, 4.5, lemlib::degToRad(-90))},
-    {&rightDistanceSensor, lemlib::Pose(7.5, -4.5, lemlib::degToRad(90))},
-    {&backClampDistanceSensor, lemlib::Pose(-5.0, -0.5, lemlib::degToRad(180))}
+    {&frontDistanceSensor, lemlib::Pose(4.5, 4.5, lemlib::degToRad(0))},
+    {&leftDistanceSensor, lemlib::Pose(4.5, 4.5, lemlib::degToRad(-90))},
+    {&rightDistanceSensor, lemlib::Pose(-2.0, -4.5, lemlib::degToRad(90))},
+    {&backClampDistanceSensor, lemlib::Pose(-7.5, 0.0, lemlib::degToRad(180))}
 };
 ParticleFilter particleFilter(100, sensorMounts);
 
@@ -283,47 +284,93 @@ void startParticleFilter()
  */
 void competition_initialize() {
    printf("Initializing competition...\n");
-/*
+
+   /*
    stopLemLibTrackingTask();
-   lemlib::Pose initialPose = lemlib::Pose(-48, -48, lemlib::degToRad(-90));
+   char buffer[100];
+
+   lemlib::Pose initialPose = lemlib::Pose(-48, -48, lemlib::degToRad(90));
    chassis.setPose(initialPose);
-   particleFilter.initialize(initialPose, &chassis, 2.0, lemlib::degToRad(5));
+   particleFilter.initialize(initialPose, &chassis, 1.0, lemlib::degToRad(5));
+   //printf("---------------------\n");
+   //particleFilter.printParticles();
+   //printf("---------------------\n");
+   lemlib::Pose estimatedPose = particleFilter.getEstimatedPose();
+   sprintf(buffer, "Initial EstimatedPose: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
+   printf("%s\n", buffer);
    particleFilter.update(initialPose);
    particleFilter.measurementUpdate();
    particleFilter.resample();
-   //particleFilter.start();
-   //pros::delay(3000); // Wait for the particle filter to stabilize
-   //particleFilter.stop();
-   lemlib::Pose estimatedPose = particleFilter.getEstimatedPose();
+   //printf("---------------------\n");
+   //particleFilter.printParticles();
+   //printf("---------------------\n");
+   estimatedPose = particleFilter.getEstimatedPose();
    double rdist = 0.0393701 * rightDistanceSensor.get_distance();
    double bdist = 0.0393701 * backClampDistanceSensor.get_distance();
    double fdist = 0.0393701 * frontDistanceSensor.get_distance();
    double ldist = 0.0393701 * leftDistanceSensor.get_distance();
-   char buffer[100];
    sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
    printf("%s\n", buffer);
    sprintf(buffer, "R: %.2f B: %.2f L: %.2f F: %.2f", rdist, bdist, ldist, fdist);
    printf("%s\n", buffer);
    Particle bestParticle = particleFilter.getBestParticle();
-   sprintf(buffer, "Best Particle: %d, %d, %d %d", (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (int)(1000000 * bestParticle.weight));
+   sprintf(buffer, "Best Particle: %d (%d, %d, %d) %e",bestParticle.id, (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (bestParticle.weight));
    printf("%s\n", buffer);
-   lemlib::Pose sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(180));
-   double expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
-   sprintf(buffer, "Back Expected Distance: %f", expectedDistance);
+
+   particleFilter.start();
+   pros::delay(1000); // Wait for the particle filter to stabilize
+   //particleFilter.stop();
+
+   printf("1 second later....\n");
+   estimatedPose = particleFilter.getEstimatedPose();
+   rdist = 0.0393701 * rightDistanceSensor.get_distance();
+   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   fdist = 0.0393701 * frontDistanceSensor.get_distance();
+   ldist = 0.0393701 * leftDistanceSensor.get_distance();
+   sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
    printf("%s\n", buffer);
-   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(0));
-   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
-   sprintf(buffer, "Front Expected Distance: %f", expectedDistance);
+   sprintf(buffer, "R: %.2f B: %.2f L: %.2f F: %.2f", rdist, bdist, ldist, fdist);
    printf("%s\n", buffer);
-   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(90));
-   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
-   sprintf(buffer, "Right Expected Distance: %f", expectedDistance);
+   bestParticle = particleFilter.getBestParticle();
+   sprintf(buffer, "Best Particle: %d (%d, %d, %d) %e",bestParticle.id, (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (bestParticle.weight));
    printf("%s\n", buffer);
-   sensorPose = lemlib::Pose(-48, -48, lemlib::degToRad(-90));
-   expectedDistance = particleFilter.getExpectedWallDistance(sensorPose);
-   sprintf(buffer, "Left Expected Distance: %f", expectedDistance);
+
+   //particleFilter.start();
+   pros::delay(5000); // Wait for the particle filter to stabilize
+   //particleFilter.stop();
+
+   printf("5 more seconds later....\n");
+   estimatedPose = particleFilter.getEstimatedPose();
+   rdist = 0.0393701 * rightDistanceSensor.get_distance();
+   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   fdist = 0.0393701 * frontDistanceSensor.get_distance();
+   ldist = 0.0393701 * leftDistanceSensor.get_distance();
+   sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
    printf("%s\n", buffer);
-*/
+   sprintf(buffer, "R: %.2f B: %.2f L: %.2f F: %.2f", rdist, bdist, ldist, fdist);
+   printf("%s\n", buffer);
+   bestParticle = particleFilter.getBestParticle();
+   sprintf(buffer, "Best Particle: %d (%d, %d, %d) %e",bestParticle.id, (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (bestParticle.weight));
+   printf("%s\n", buffer);
+
+   //particleFilter.start();
+   pros::delay(10000); // Wait for the particle filter to stabilize
+   particleFilter.stop();
+
+   printf("10 more seconds later....\n");
+   estimatedPose = particleFilter.getEstimatedPose();
+   rdist = 0.0393701 * rightDistanceSensor.get_distance();
+   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   fdist = 0.0393701 * frontDistanceSensor.get_distance();
+   ldist = 0.0393701 * leftDistanceSensor.get_distance();
+   sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
+   printf("%s\n", buffer);
+   sprintf(buffer, "R: %.2f B: %.2f L: %.2f F: %.2f", rdist, bdist, ldist, fdist);
+   printf("%s\n", buffer);
+   bestParticle = particleFilter.getBestParticle();
+   sprintf(buffer, "Best Particle: %d (%d, %d, %d) %e",bestParticle.id, (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (bestParticle.weight));
+   printf("%s\n", buffer);
+   */
    printf("Initializing competition...Done!\n");
 }
 
@@ -452,7 +499,14 @@ void opcontrol()
             dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
          }
          liftState = !liftState;
-         liftpnuematic.set_value(liftState);
+         liftPnuematic.set_value(liftState);
+      }
+      static bool doinkerState = false;
+      if (masterController.get_digital_new_press(DIGITAL_LEFT))
+      {
+         doinkerState = !doinkerState;
+         
+         doinker.set_value(doinkerState);
       }
       // delay to save resources
       pros::delay(20);

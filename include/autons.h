@@ -35,3 +35,4 @@ void scoringSkills();
 void dumpTruckScore(pros::Motor *dumpTruckMotor);
 void doAutonclamp();
 void intakeUntilRing();
+void intakeStallDetection();

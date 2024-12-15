@@ -2,11 +2,14 @@
 #include <algorithm>
 #include "particle.hpp"
 
+// Add a static counter for unique IDs
+static unsigned int next_particle_id = 0;
+
 ParticleFilter::ParticleFilter(size_t num_particles, const std::vector<SensorMount>& sensorMounts) 
     : sensors(sensorMounts), 
       numParticles(num_particles),
       lastOdomPosition(0, 0, 0),
-      bestParticle(lemlib::Pose(0, 0, 0), 0) {
+      bestParticle(next_particle_id++, lemlib::Pose(0, 0, 0), 0.0) {
     particles.reserve(numParticles);
     
     // Initialize sensor reading buffers
@@ -18,13 +21,15 @@ lemlib::Pose ParticleFilter::generateNoisyPose(const lemlib::Pose& reference,
                                               double positionNoise, 
                                               double angleNoise,
                                               std::mt19937& gen) {
-    std::normal_distribution<> poseDist(0, positionNoise);
+    std::normal_distribution<> poseDist(0, std::sqrt(positionNoise));
     std::normal_distribution<> angleDist(0, angleNoise);
+
+    double randomAngleDelta = angleDist(gen);
     
     return lemlib::Pose(
         reference.x + poseDist(gen),
         reference.y + poseDist(gen),
-        normalizeAngle(reference.theta + angleDist(gen))
+        normalizeAngle(reference.theta + randomAngleDelta)
     );
 }
 
@@ -33,6 +38,7 @@ void ParticleFilter::initialize(const lemlib::Pose& startPose, lemlib::Chassis* 
     this->chassis = chassis;
     lastOdomPosition = startPose;
     particles.clear();
+    bestParticle = Particle(-1, startPose, -1);
     
     // Reset all sensor reading buffers to max range
     for (size_t i = 0; i < sensors.size(); i++) {
@@ -46,42 +52,58 @@ void ParticleFilter::initialize(const lemlib::Pose& startPose, lemlib::Chassis* 
     particles.reserve(numParticles);
     for (size_t i = 0; i < numParticles; i++) {
         particles.emplace_back(
+            next_particle_id++,
             generateNoisyPose(startPose, positionNoise, angleNoise, gen),
-            1.0/numParticles
+            1.0 / numParticles  // Maintain uniform initial weights
         );
     }
     initialized = true;
+
+    lastUpdateTime = pros::millis();
 }
 
 void ParticleFilter::update(const lemlib::Pose& newOdomPosition) {
-    // Calculate the change in position
     lemlib::Pose odomDelta = newOdomPosition - lastOdomPosition;
-    lastOdomPosition = newOdomPosition;
-
+    
+    // Calculate time delta
+    uint32_t currentTime = pros::millis();
+    double dt = (currentTime - lastUpdateTime);
+    if (dt <= 0) dt = 0.01;
+    
+    // Calculate linear and angular velocities
+    double linearVelocity = std::hypot(odomDelta.x, odomDelta.y) / (dt / 1000.0);
+    double angularVelocity = std::abs(odomDelta.theta) / (dt / 1000.0);
+    
+    // Adjust noise parameters for lower drift
+    double posNoise = std::sqrt(0.005 + 0.05 * std::abs(linearVelocity));
+    double angleNoise = 0.05 * lemlib::degToRad(5);
+    
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<> noise_xy(0, 0.5); // 0.5 inch std dev
-    std::normal_distribution<> noise_theta(0, lemlib::degToRad(10)); // 10 degrees std dev
+    std::normal_distribution<> noise_xy(0, posNoise);
+    std::normal_distribution<> noise_theta(0, angleNoise);
 
     for (auto& particle : particles) {
-        // Apply odometry motion
         particle.pose = particle.pose + odomDelta;
         
-        // Add noise
+        // Add noise based on updated parameters
+        double randomAngleDelta = noise_theta(gen);
         particle.pose.x += noise_xy(gen);
         particle.pose.y += noise_xy(gen);
-        particle.pose.theta = normalizeAngle(particle.pose.theta + noise_theta(gen));
+        particle.pose.theta = normalizeAngle(particle.pose.theta + randomAngleDelta);
     }
+    
+    // Update stored values for next iteration
+    lastOdomPosition = newOdomPosition;
+    lastUpdateTime = currentTime;
 }
 
 double ParticleFilter::getExpectedWallDistance(const lemlib::Pose& sensorPose) const {
-    // Field boundaries (in inches)
-    const double left = -FIELD_SIZE/2;
+    const double left = -FIELD_SIZE/2;   // Field boundaries in inches
     const double right = FIELD_SIZE/2;
     const double bottom = -FIELD_SIZE/2;
     const double top = FIELD_SIZE/2;
     
-    // Store walls as line segments: {x1,y1,x2,y2}
     const std::array<std::array<double,4>,4> walls = {{
         {left, bottom, left, top},    // Left wall
         {right, bottom, right, top},  // Right wall
@@ -89,40 +111,41 @@ double ParticleFilter::getExpectedWallDistance(const lemlib::Pose& sensorPose) c
         {left, top, right, top}      // Top wall
     }};
     
-    // Sensor's ray: starting point (px,py) and direction vector (dx,dy)
-    double px = sensorPose.x;
+    double px = sensorPose.x;  // Position is already in inches
     double py = sensorPose.y;
-    // Update direction vector calculation for clockwise rotation
-    double dx = std::cos(sensorPose.theta);  // No change needed
-    double dy = -std::sin(sensorPose.theta); // Negative for clockwise convention
     
-    double minDist = MAX_RANGE_MM * MM_TO_INCH;
+    // Use sensor angle directly (VEX uses counter-clockwise positive)
+    double dx = std::cos(sensorPose.theta);
+    double dy = std::sin(sensorPose.theta);
+    
+    double minDist = MAX_RANGE_MM;  // Start with max range in mm
     
     for (const auto& wall : walls) {
-        // Wall line segment points
+        // Wall line segment points (all in inches)
         double x1 = wall[0], y1 = wall[1];
         double x2 = wall[2], y2 = wall[3];
         
         // Calculate intersection using parametric equations
-        // Ray: p + t*d, where p is start point, d is direction
-        // Wall segment: p1 + s*(p2-p1), where p1 and p2 are endpoints
-        double denominator = (x2-x1)*dy - (y2-y1)*dx;
+        double denom = (dx * (y2 - y1)) - (dy * (x2 - x1));
+        if (std::abs(denom) < 1e-6) continue;  // Lines are parallel
         
-        // Skip if lines are parallel
-        if (std::abs(denominator) < 1e-6) continue;
+        double ua = ((x2 - x1) * (py - y1) - (y2 - y1) * (px - x1)) / denom;
+        double ub = (dx * (py - y1) - dy * (px - x1)) / denom;
         
-        // Calculate intersection parameters
-        double s = ((px-x1)*dy - (py-y1)*dx) / denominator;
-        double t = ((x2-x1)*(py-y1) - (y2-y1)*(px-x1)) / denominator;
-        
-        // Check if intersection lies within wall segment and in front of sensor
-        if (s >= 0 && s <= 1 && t >= 0) {
-            double dist = t; // Since direction vector is normalized, t is the distance
-            minDist = std::min(minDist, dist);
+        // Check if intersection is valid (on wall segment and in front of sensor)
+        if (ua >= 0 && ub >= 0 && ub <= 1) {
+            double ix = px + ua * dx;  // Intersection x (in inches)
+            double iy = py + ua * dy;  // Intersection y (in inches)
+            
+            // Calculate actual distance in inches then convert to mm
+            double dist = std::hypot(ix - px, iy - py) * 25.4;  // Convert inches to mm
+            if (dist < minDist) {
+                minDist = dist;
+            }
         }
     }
     
-    return minDist;
+    return minDist;  // Return distance in mm directly
 }
 
 void ParticleFilter::addReading(size_t sensorIndex, double reading) {
@@ -143,92 +166,89 @@ double ParticleFilter::getSmoothedReading(size_t sensorIndex) const {
 }
 
 void ParticleFilter::measurementUpdate() {
-    // Collect and smooth all sensor readings first
     std::vector<double> smoothedReadings;
     smoothedReadings.reserve(sensors.size());
     
     for (size_t i = 0; i < sensors.size(); i++) {
-        // Add new reading to buffer
-        //addReading(i, sensors[i].sensor->get());
-        // Get smoothed reading
-        //smoothedReadings.push_back(getSmoothedReading(i));
         int currentReading = sensors[i].sensor->get();
+        // Ignore invalid readings
+        if (currentReading < MIN_RANGE_MM || currentReading > MAX_RANGE_MM) {
+            continue;
+        }
         smoothedReadings.push_back(currentReading);
     }
+
+    // Skip update if no valid readings
+    if (smoothedReadings.empty()) return;
 
     double maxWeight = -1;
     double sumWeights = 0;
     cumulativeWeights.clear();
     cumulativeWeights.reserve(particles.size());
     
+    const double MIN_PROBABILITY = 0.1;  // Add minimum probability floor
+    
     for (auto& particle : particles) {
-        double probability = 1.0;
+        particle.weight = 1.0;
+        int validMeasurements = 0;
         
         for (size_t i = 0; i < sensors.size(); i++) {
             double actualDistance_mm = smoothedReadings[i];
-            
-            if (actualDistance_mm <= 20) {
-                continue;
-            }
+            if (actualDistance_mm <= MIN_RANGE_MM) continue;
+            if (actualDistance_mm > MAX_RANGE_MM) continue;
 
-            // Calculate sensor's world position with clockwise-positive angles
-            // Note: For clockwise rotation, we flip the sin terms
-            double rotatedX = sensors[i].relativePose.x * std::cos(particle.pose.theta) + 
-                            sensors[i].relativePose.y * std::sin(particle.pose.theta);
-            double rotatedY = -sensors[i].relativePose.x * std::sin(particle.pose.theta) + 
-                            sensors[i].relativePose.y * std::cos(particle.pose.theta);
+            // Calculate sensor's world position
+            double sensorTheta = sensors[i].relativePose.theta;
+            double rotatedX = sensors[i].relativePose.x * std::cos(sensorTheta) - 
+                            sensors[i].relativePose.y * std::sin(sensorTheta);
+            double rotatedY = sensors[i].relativePose.x * std::sin(sensorTheta) + 
+                            sensors[i].relativePose.y * std::cos(sensorTheta);
             
-            // 2. Create sensor's world pose by adding rotated offset to particle position
             lemlib::Pose sensorWorldPose(
                 particle.pose.x + rotatedX,
                 particle.pose.y + rotatedY,
-                normalizeAngle(particle.pose.theta + sensors[i].relativePose.theta)
+                normalizeAngle(particle.pose.theta + sensorTheta)
             );
 
-            // Debug print
-            printf("Robot at (%.1f, %.1f, %.1f°), Sensor offset (%.1f, %.1f, %.1f°) -> Sensor at (%.1f, %.1f, %.1f°)\n",
-                   particle.pose.x, particle.pose.y, lemlib::radToDeg(particle.pose.theta),
-                   sensors[i].relativePose.x, sensors[i].relativePose.y, lemlib::radToDeg(sensors[i].relativePose.theta),
-                   sensorWorldPose.x, sensorWorldPose.y, lemlib::radToDeg(sensorWorldPose.theta));
-
-            // Get expected distance to nearest wall in inches
-            double expectedDistance_in = getExpectedWallDistance(sensorWorldPose);
-            double expectedDistance_mm = expectedDistance_in / MM_TO_INCH;
+            double expectedDistance_mm = getExpectedWallDistance(sensorWorldPose);
+            double diff = std::abs(actualDistance_mm - expectedDistance_mm);
             
-            printf("\tSensor %d: Actual: %.2f, Expected: %.2f from pose (%d, %d, %d)\n", i, actualDistance_mm, expectedDistance_mm, (int)sensorWorldPose.x,(int)sensorWorldPose.y,int(lemlib::radToDeg(sensorWorldPose.theta)));
-
-            // Handle different measurement cases
-            if (expectedDistance_mm >= MAX_RANGE_MM) {
-                if (actualDistance_mm < MAX_RANGE_MM) {
-                    probability *= actualDistance_mm / MAX_RANGE_MM;
-                }
-                continue;
-            }
+            // Debugging: Log expected wall distance and particle angle
+            /*
+            std::cout << "Particle Pose: " << particle.id << " (" << particle.pose.x << ", " << particle.pose.y << ", " << (int)(lemlib::radToDeg(particle.pose.theta)) << ")\n";
+            std::cout << "Sensor World Pose: (" << sensorWorldPose.x << ", " << sensorWorldPose.y << ", " << (int)(lemlib::radToDeg(sensorWorldPose.theta)) << ")\n";            std::cout << "Expected Distance: " << expectedDistance_mm << " mm\n";
+            std::cout << "Actual Distance: " << actualDistance_mm << " mm\n";
+            std::cout << "Difference: " << diff << " mm\n";
+            */
+            // Use variance based on sensor specifications
+            double variance = getSensorVariance(actualDistance_mm);
             
-            if (actualDistance_mm >= MAX_RANGE_MM) {
-                probability *= expectedDistance_mm / MAX_RANGE_MM;
-                continue;
-            }
+            // Apply Gaussian model with minimum probability
+            double probability = std::max(
+                MIN_PROBABILITY,
+                std::exp(-diff * diff / (2 * variance))
+            );
             
-            // Calculate measurement probability using appropriate variance
-            double variance = getSensorVariance(expectedDistance_mm);
-            double diff = actualDistance_mm - expectedDistance_mm;
-            double scaledDiff = diff / std::sqrt(variance);  // Normalize by standard deviation
-            probability *= std::exp(-scaledDiff * scaledDiff);
+            particle.weight *= probability;
+            validMeasurements++;
         }
         
-        particle.weight *= probability;
+        // Adjust weight based on number of valid measurements
+        if (validMeasurements > 0) {
+            // Take the geometric mean of the probabilities
+            particle.weight = std::pow(particle.weight, 1.0 / validMeasurements);
+        }
+        
         sumWeights += particle.weight;
         cumulativeWeights.push_back(sumWeights);
         
-        // Track best particle
         if (particle.weight > maxWeight) {
             maxWeight = particle.weight;
             bestParticle = particle;
         }
     }
 
-    // Normalize weights and cumulative weights
+    // Normalize weights
     if (sumWeights > 0) {
         for (auto& p : particles) {
             p.weight /= sumWeights;
@@ -240,34 +260,49 @@ void ParticleFilter::measurementUpdate() {
 }
 
 void ParticleFilter::resample() {
-    // Sort particles by weight in descending order
+    // Keep more existing particles
+    size_t numParticlesToKeep = particles.size() * 0.95;
+    
+    // Sort particles by weight
     std::sort(particles.begin(), particles.end(), 
               [](const Particle& a, const Particle& b) { return a.weight > b.weight; });
     
-    // Create new vector with top 95% of particles
-    size_t numParticlesToKeep = particles.size() * 0.95;
     std::vector<Particle> newParticles(particles.begin(), particles.begin() + numParticlesToKeep);
     
-    // Generate random particles around best particle
+    // Calculate sum of kept weights
+    double keptWeightsSum = 0;
+    for (const auto& p : newParticles) {
+        keptWeightsSum += p.weight;
+    }
+    
+    // Add fewer random particles with smaller spread
     std::random_device rd;
     std::mt19937 gen(rd());
     
-    // Add new random particles
     size_t numNewParticles = numParticles - numParticlesToKeep;
+    double newParticleWeight = (0.001 * keptWeightsSum) / numNewParticles;
+    lemlib::Pose estimatedPose = getEstimatedPose();
+    
     for (size_t i = 0; i < numNewParticles; i++) {
         newParticles.emplace_back(
-            generateNoisyPose(bestParticle.pose, 4.0, lemlib::degToRad(15), gen),
-            1.0/numParticles
+            next_particle_id++, // Assign unique ID
+            generateNoisyPose(estimatedPose, 2.0, lemlib::degToRad(5), gen),
+            newParticleWeight
         );
     }
     
-    // Swap the new particles with the old ones
+    // Normalize weights
+    double totalWeight = keptWeightsSum + (newParticleWeight * numNewParticles);
+    for (auto& p : newParticles) {
+        p.weight /= totalWeight;
+    }
+    
     particles.swap(newParticles);
 }
 
 lemlib::Pose ParticleFilter::getEstimatedPose() const {
     if (particles.empty() || bestParticle.weight <= 0) {
-        return lemlib::Pose(0, 0, 0);
+        return lastOdomPosition;
     }
 
     double x_sum = 0;
@@ -295,11 +330,7 @@ lemlib::Pose ParticleFilter::getEstimatedPose() const {
     cos_sum /= weight_sum;
 
     // Calculate average angle using atan2 with clockwise-positive convention
-    double theta = normalizeAngle(-std::atan2(sin_sum, cos_sum));
-    
-    // Normalize to -180 to 180 degrees
-    while (theta > M_PI) theta -= 2*M_PI;
-    while (theta < -M_PI) theta += 2*M_PI;
+    double theta = normalizeAngle(std::atan2(sin_sum, cos_sum));
 
     return lemlib::Pose(x_sum, y_sum, theta);
 }
@@ -324,5 +355,22 @@ void ParticleFilter::stop() {
     if (filterTask != nullptr) {
         delete filterTask;
         filterTask = nullptr;
+    }
+}
+
+void ParticleFilter::printParticles() const {
+    std::cout << "Best Particle Pose: (" 
+              << bestParticle.pose.x << ", " 
+              << bestParticle.pose.y << ", " 
+              << lemlib::radToDeg(bestParticle.pose.theta) << " degrees), "
+              << "Weight: " << bestParticle.weight << std::endl;
+
+    for (const auto& particle : particles) {
+        std::cout << "Particle ID: " << particle.id 
+                  << " Pose: (" 
+                  << particle.pose.x << ", " 
+                  << particle.pose.y << ", " 
+                  << lemlib::radToDeg(particle.pose.theta) << " degrees), "
+                  << "Weight: " << particle.weight << std::endl;
     }
 }

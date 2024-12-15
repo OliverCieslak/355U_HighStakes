@@ -19,6 +19,7 @@ extern rd::Console console;
 extern pros::Imu imu;
 
 extern pros::adi::DigitalOut backClampPnuematic;
+extern pros::adi::DigitalOut liftPnuematic;
 extern pros::Optical firstRingColorSensor;
 extern pros::Distance backClampDistanceSensor;
 extern pros::Distance frontDistanceSensor;
@@ -26,3 +27,6 @@ extern pros::Distance lefttDistanceSensor;
 extern pros::Distance rightDistanceSensor;
 
 extern rd::Console console;
+extern int MIN_INTAKE_TIME;
+extern int POST_INTAKE_DELAY;
+extern int MAX_INTAKE_TIME;
