@@ -7,6 +7,7 @@
 #include "lemlib/pose.hpp"
 #include "lemlib/util.hpp"
 #include "pros/distance.hpp"
+#include "pros/rtos.hpp"
 class Particle {
     public:
         lemlib::Pose pose;
@@ -17,6 +18,8 @@ class Particle {
         Particle(unsigned int id, lemlib::Pose p, double w = 1.0) 
             : id(id), pose(p), weight(w) {}
 };
+
+static const Particle BAD_PARTICLE = Particle(-1, lemlib::Pose(-99999, -99999, 0), 0.0);
 
 class ParticleFilter {
     public:
@@ -37,14 +40,22 @@ class ParticleFilter {
         void resample();
         
         // Get estimated pose
-        lemlib::Pose getEstimatedPose() const;
+        lemlib::Pose getEstimatedPose();
 
         // Initialize particles around an estimated starting pose
         void initialize(const lemlib::Pose& startPose, lemlib::Chassis* chassis, 
                        double positionNoise = 2.0, double angleNoise = 0.1);
         
-        // Get the particle with highest weight from last measurement update
-        const Particle& getBestParticle() const { return bestParticle; }
+        // Return a copy of the best particle instead of a reference
+        Particle getBestParticle() { 
+            if (!bpMutex.take(50)) {  // Increased timeout, returns false if mutex not taken
+                // Return an invalid particle if mutex couldn't be taken
+                return BAD_PARTICLE;
+            }
+            Particle bestParticleCopy = bestParticle;  // Make a copy while holding mutex
+            bpMutex.give();
+            return bestParticleCopy; 
+        }
         
         // Start the particle filter task
         void start();
@@ -62,6 +73,8 @@ class ParticleFilter {
 
         // Add a function to print all particles
         void printParticles() const;
+
+        ~ParticleFilter();  // Add destructor declaration
         
     private:
         size_t numParticles;
@@ -114,13 +127,15 @@ class ParticleFilter {
         }
 
         pros::Task* filterTask = nullptr;
+        pros::Mutex bpMutex;
+        
         bool isRunning = false;
         bool initialized = false;
 
         // Main update loop for the task
         void updateLoop();
 
-        static constexpr size_t READING_BUFFER_SIZE = 5; // Keep last 5 readings
+        static constexpr size_t READING_BUFFER_SIZE = 5;
         std::vector<std::vector<double>> sensorReadingsBuffer; // Circular buffer for each sensor
         std::vector<size_t> bufferIndices; // Current index in each circular buffer
 

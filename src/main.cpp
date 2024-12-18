@@ -285,7 +285,6 @@ void startParticleFilter()
 void competition_initialize() {
    printf("Initializing competition...\n");
 
-   /*
    stopLemLibTrackingTask();
    char buffer[100];
 
@@ -370,7 +369,7 @@ void competition_initialize() {
    bestParticle = particleFilter.getBestParticle();
    sprintf(buffer, "Best Particle: %d (%d, %d, %d) %e",bestParticle.id, (int)bestParticle.pose.x, (int)bestParticle.pose.y, (int)lemlib::radToDeg(bestParticle.pose.theta), (bestParticle.weight));
    printf("%s\n", buffer);
-   */
+
    printf("Initializing competition...Done!\n");
 }
 

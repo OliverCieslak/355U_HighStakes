@@ -70,30 +70,43 @@ void ParticleFilter::update(const lemlib::Pose& newOdomPosition) {
     double dt = (currentTime - lastUpdateTime);
     if (dt <= 0) dt = 0.01;
     
-    // Calculate linear and angular velocities
-    double linearVelocity = std::hypot(odomDelta.x, odomDelta.y) / (dt / 1000.0);
-    double angularVelocity = std::abs(odomDelta.theta) / (dt / 1000.0);
+    // Only update if there's significant motion
+    double linearDelta = std::hypot(odomDelta.x, odomDelta.y);
+    double angularDelta = std::abs(odomDelta.theta);
+    if (linearDelta < 0.1 && angularDelta < lemlib::degToRad(1)) {
+        lastUpdateTime = currentTime;
+        return;
+    }
     
-    // Adjust noise parameters for lower drift
-    double posNoise = std::sqrt(0.005 + 0.05 * std::abs(linearVelocity));
-    double angleNoise = 0.05 * lemlib::degToRad(5);
+    // Calculate velocities but with much lower noise
+    double posNoise = std::sqrt(0.0001 + 0.001 * linearDelta);
+    double angleNoise = 0.001 * lemlib::degToRad(1);
     
     std::random_device rd;
     std::mt19937 gen(rd());
     std::normal_distribution<> noise_xy(0, posNoise);
     std::normal_distribution<> noise_theta(0, angleNoise);
 
+    // Constrain particles to field boundaries with margin
+    const float MARGIN = 6.0f;  // Use float instead of double
+    const float MIN_X = static_cast<float>(-FIELD_SIZE/2 + MARGIN);
+    const float MAX_X = static_cast<float>(FIELD_SIZE/2 - MARGIN);
+    const float MIN_Y = static_cast<float>(-FIELD_SIZE/2 + MARGIN);
+    const float MAX_Y = static_cast<float>(FIELD_SIZE/2 - MARGIN);
+
     for (auto& particle : particles) {
         particle.pose = particle.pose + odomDelta;
         
-        // Add noise based on updated parameters
-        double randomAngleDelta = noise_theta(gen);
+        // Add minimal noise
         particle.pose.x += noise_xy(gen);
         particle.pose.y += noise_xy(gen);
-        particle.pose.theta = normalizeAngle(particle.pose.theta + randomAngleDelta);
+        particle.pose.theta = normalizeAngle(particle.pose.theta + noise_theta(gen));
+        
+        // Constrain to field
+        particle.pose.x = std::max(MIN_X, std::min(particle.pose.x, MAX_X));
+        particle.pose.y = std::max(MIN_Y, std::min(particle.pose.y, MAX_Y));
     }
     
-    // Update stored values for next iteration
     lastOdomPosition = newOdomPosition;
     lastUpdateTime = currentTime;
 }
@@ -186,12 +199,22 @@ void ParticleFilter::measurementUpdate() {
     cumulativeWeights.clear();
     cumulativeWeights.reserve(particles.size());
     
-    const double MIN_PROBABILITY = 0.1;  // Add minimum probability floor
+    // Increase minimum probability threshold significantly
+    const double MIN_PROBABILITY = 0.1;  // Changed from 0.01
     
     for (auto& particle : particles) {
         particle.weight = 1.0;
         int validMeasurements = 0;
         
+        // Reduce odometry penalty
+        double odomDist = std::hypot(particle.pose.x - lastOdomPosition.x,
+                                   particle.pose.y - lastOdomPosition.y);
+        double odomAngleDiff = std::abs(normalizeAngle(particle.pose.theta - lastOdomPosition.theta));
+        
+        // Make odometry weight more lenient
+        double odomWeight = std::exp(-odomDist * 0.05) * std::exp(-odomAngleDiff);
+        particle.weight *= odomWeight;
+
         for (size_t i = 0; i < sensors.size(); i++) {
             double actualDistance_mm = smoothedReadings[i];
             if (actualDistance_mm <= MIN_RANGE_MM) continue;
@@ -220,38 +243,37 @@ void ParticleFilter::measurementUpdate() {
             std::cout << "Actual Distance: " << actualDistance_mm << " mm\n";
             std::cout << "Difference: " << diff << " mm\n";
             */
-            // Use variance based on sensor specifications
-            double variance = getSensorVariance(actualDistance_mm);
+            // Make variance extremely strict for stationary operation
+            double variance = std::min(50.0, getSensorVariance(actualDistance_mm) * 0.25);
             
-            // Apply Gaussian model with minimum probability
+            // Less aggressive probability calculation
             double probability = std::max(
                 MIN_PROBABILITY,
-                std::exp(-diff * diff / (2 * variance))
+                std::exp(-diff * diff / (2 * variance))  // Remove extra exponential penalty
             );
             
             particle.weight *= probability;
             validMeasurements++;
         }
         
-        // Adjust weight based on number of valid measurements
+        // Less aggressive geometric mean
         if (validMeasurements > 0) {
-            // Take the geometric mean of the probabilities
-            particle.weight = std::pow(particle.weight, 1.0 / validMeasurements);
+            particle.weight = std::pow(particle.weight, 1.0 / validMeasurements);  // Changed from 2.0
         }
         
         sumWeights += particle.weight;
         cumulativeWeights.push_back(sumWeights);
-        
-        if (particle.weight > maxWeight) {
-            maxWeight = particle.weight;
-            bestParticle = particle;
-        }
     }
 
-    // Normalize weights
+    // Normalize weights before selecting best particle
     if (sumWeights > 0) {
+        maxWeight = -1;
         for (auto& p : particles) {
             p.weight /= sumWeights;
+            if (p.weight > maxWeight) {
+                maxWeight = p.weight;
+                bestParticle = p;
+            }
         }
         for (auto& c : cumulativeWeights) {
             c /= sumWeights;
@@ -260,48 +282,61 @@ void ParticleFilter::measurementUpdate() {
 }
 
 void ParticleFilter::resample() {
-    // Keep more existing particles
-    size_t numParticlesToKeep = particles.size() * 0.95;
+    if (particles.empty()) return;
+
+    // Sort particles by weight in descending order
+    std::sort(particles.begin(), particles.end(),
+             [](const Particle& a, const Particle& b) { return a.weight > b.weight; });
     
-    // Sort particles by weight
-    std::sort(particles.begin(), particles.end(), 
-              [](const Particle& a, const Particle& b) { return a.weight > b.weight; });
+    // Much higher proportion of kept particles when stationary
+    size_t particlesToKeep = std::min(size_t(numParticles * 0.9), particles.size());
+    double weightThreshold = particles[0].weight * 0.6;
     
-    std::vector<Particle> newParticles(particles.begin(), particles.begin() + numParticlesToKeep);
+    // Create new vector with kept particles
+    std::vector<Particle> newParticles;
+    newParticles.reserve(numParticles);
     
-    // Calculate sum of kept weights
-    double keptWeightsSum = 0;
-    for (const auto& p : newParticles) {
-        keptWeightsSum += p.weight;
+    // Copy high-weight particles
+    for (size_t i = 0; i < particlesToKeep; i++) {
+        newParticles.push_back(particles[i]);
     }
     
-    // Add fewer random particles with smaller spread
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    
-    size_t numNewParticles = numParticles - numParticlesToKeep;
-    double newParticleWeight = (0.001 * keptWeightsSum) / numNewParticles;
-    lemlib::Pose estimatedPose = getEstimatedPose();
-    
-    for (size_t i = 0; i < numNewParticles; i++) {
-        newParticles.emplace_back(
-            next_particle_id++, // Assign unique ID
-            generateNoisyPose(estimatedPose, 2.0, lemlib::degToRad(5), gen),
-            newParticleWeight
-        );
+    try {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        
+        size_t remainingSlots = numParticles - newParticles.size();
+        size_t numNewFarParticles = std::max(size_t(1), size_t(remainingSlots * 0.01)); // Greatly reduce far particles
+        size_t numNewCloseParticles = remainingSlots - numNewFarParticles;
+        
+        // Add close particles with minimal noise
+        for (size_t i = 0; i < numNewCloseParticles; i++) {
+            newParticles.emplace_back(
+                next_particle_id++,
+                generateNoisyPose(bestParticle.pose, 0.5, lemlib::degToRad(1), gen),
+                0.0
+            );
+        }
+
+        // Add far particles with more limited spread
+        for (size_t i = 0; i < numNewFarParticles; i++) {
+            newParticles.emplace_back(
+                next_particle_id++,
+                generateNoisyPose(bestParticle.pose, 3.0, lemlib::degToRad(90), gen),
+                0.0
+            );
+        }
+        
+        particles = std::move(newParticles);
+    } catch (const std::bad_alloc& e) {
+        std::cerr << "Memory allocation failed during resampling, keeping existing particles" << std::endl;
     }
-    
-    // Normalize weights
-    double totalWeight = keptWeightsSum + (newParticleWeight * numNewParticles);
-    for (auto& p : newParticles) {
-        p.weight /= totalWeight;
-    }
-    
-    particles.swap(newParticles);
 }
 
-lemlib::Pose ParticleFilter::getEstimatedPose() const {
+lemlib::Pose ParticleFilter::getEstimatedPose() {
+    bpMutex.take(100);  // Take mutex to access best particle
     if (particles.empty() || bestParticle.weight <= 0) {
+        bpMutex.give();
         return lastOdomPosition;
     }
 
@@ -331,7 +366,7 @@ lemlib::Pose ParticleFilter::getEstimatedPose() const {
 
     // Calculate average angle using atan2 with clockwise-positive convention
     double theta = normalizeAngle(std::atan2(sin_sum, cos_sum));
-
+    bpMutex.give();
     return lemlib::Pose(x_sum, y_sum, theta);
 }
 
@@ -340,10 +375,13 @@ void ParticleFilter::start() {
         isRunning = true;
         filterTask = new pros::Task([this] {
             while (isRunning) {
-                lemlib::update();
-                this->update(chassis->getPose());
-                this->measurementUpdate();
-                this->resample();
+                if(bpMutex.take(5)) {
+                    lemlib::update();
+                    this->update(chassis->getPose());
+                    this->measurementUpdate();
+                    this->resample();
+                    bpMutex.give();
+                }
                 pros::delay(10);
             }
         });
@@ -353,9 +391,16 @@ void ParticleFilter::start() {
 void ParticleFilter::stop() {
     isRunning = false;
     if (filterTask != nullptr) {
+        // Wait for task to complete before deleting
+        filterTask->remove();
         delete filterTask;
         filterTask = nullptr;
     }
+}
+
+// Add destructor
+ParticleFilter::~ParticleFilter() {
+    stop();  // Ensure task is stopped and cleaned up
 }
 
 void ParticleFilter::printParticles() const {
