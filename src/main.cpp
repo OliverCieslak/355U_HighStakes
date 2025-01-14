@@ -23,16 +23,16 @@ rd::Console console;
 pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 
 // motor groups
-pros::MotorGroup leftMotors({17, -3, 18},
+pros::MotorGroup leftMotors({10, -9, -8},
                             pros::MotorGearset::blue);
-pros::MotorGroup rightMotors({-1, 6, -9}, pros::MotorGearset::blue);
+pros::MotorGroup rightMotors({14, -2, 4}, pros::MotorGearset::blue);
 pros::Optical firstRingColorSensor(21);
-pros::Imu imu(7);
+pros::Imu imu(19);
 
-int INTAKE_MOTOR_PORT = 4;
-int DUMP_TRUCK_MOTOR_PORT = 10;
-pros::Motor intakeMotor(INTAKE_MOTOR_PORT);
-pros::Motor dumpTruckMotor(DUMP_TRUCK_MOTOR_PORT);
+int Stage_One_Intake = 11;
+int Stage_Two_Intake = 1;
+pros::Motor IntakeStageOne(Stage_One_Intake);
+pros::Motor IntakeStageTwo(Stage_Two_Intake);
 pros::adi::DigitalOut liftPnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
 pros::adi::DigitalOut doinker('A');
@@ -58,10 +58,10 @@ lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             70   // maximum acceleration (slew)
 );
 */
-lemlib::ControllerSettings linearController(20,   // proportional gain (kP)
+lemlib::ControllerSettings linearController(550,   // proportional gain (kP)
                                             0,   // integral gain (kI)
-                                            100,   // derivative gain (kD)
-                                            3,   // anti windup
+                                            6000,   // derivative gain (kD)
+                                             3,   // anti windup
                                             1,   // small error range, in inches
                                             60,  // small error range timeout, in milliseconds
                                             3,   // large error range, in inches
@@ -70,15 +70,16 @@ lemlib::ControllerSettings linearController(20,   // proportional gain (kP)
 );
 
 // angular motion controller
-lemlib::ControllerSettings angularController(1.8, // proportional gain (kP)
+lemlib::ControllerSettings angularController(5, // proportional gain (kP)
                                              0,   // integral gain (kI)
-                                             10,  // derivative gain (kD)
+                                             45,  // derivative gain (kD)
                                              3,   // anti windup
                                              1,  // small error range, in degrees
                                              100, // small error range timeout, in milliseconds
                                              3,   // large error range, in degrees
                                              500, // large error range timeout, in milliseconds
                                              0    // maximum acceleration (slew)
+
 );
 
 lemlib::TrackingWheel left_vertical_tracking_wheel(&leftMotors, lemlib::Omniwheel::NEW_275, -6, 600);
@@ -180,8 +181,8 @@ void initialize()
    chassis.calibrate();
    chassis.setPose(0, 0, 0);
 
-   dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
-   dumpTruckMotor.tare_position();
+   IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+   IntakeStageTwo.tare_position();
 
    console.println("Initializing robot...Done!");
 }
@@ -297,9 +298,13 @@ void competition_initialize() {
    lemlib::Pose estimatedPose = particleFilter.getEstimatedPose();
    sprintf(buffer, "Initial EstimatedPose: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
    printf("%s\n", buffer);
+   int particleStartTime = pros::micros();
    particleFilter.update(initialPose);
    particleFilter.measurementUpdate();
    particleFilter.resample();
+   int particleEndTime = pros::micros();
+   sprintf(buffer, "Particle Filter Time: %d microseconds", particleEndTime - particleStartTime);
+   printf("%s\n", buffer);
    //printf("---------------------\n");
    //particleFilter.printParticles();
    //printf("---------------------\n");
@@ -439,31 +444,27 @@ void opcontrol()
 
       if (masterController.get_digital(DIGITAL_R1))
       {
-         intakeMotor.move_velocity(-200);
+
+         IntakeStageOne.move_velocity(-600);   // Changed from 127
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
-         intakeMotor.move_velocity(200);
+         IntakeStageOne.move_velocity(600);  // Changed from -127
       }
       else
       {
-         intakeMotor.move_velocity(0);
+         IntakeStageOne.move_velocity(0);
       }
-      if (masterController.get_digital(DIGITAL_L1) && (int)dumpTruckMotor.get_position() > -790)
+      if (masterController.get_digital(DIGITAL_L1))
       {
-         dumpTruckMotor.move_velocity(-127);
-         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+         IntakeStageTwo.move_velocity(600);  // Changed from -200
       }
-      else if (masterController.get_digital(DIGITAL_L2) && (
-                  (!liftState && dumpTruckMotor.get_position() < -10) ||
-                  (liftState && dumpTruckMotor.get_position() < -30)))
-      {
-         dumpTruckMotor.move_velocity(127);
-         dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+      else if (masterController.get_digital(DIGITAL_L2)){ 
+         IntakeStageTwo.move_velocity(-600);   // Changed from 200
       }
       else
       {
-         dumpTruckMotor.move_velocity(0);
+         IntakeStageTwo.move_velocity(0);
       }
 
       if (masterController.get_digital_new_press(DIGITAL_A))
@@ -486,20 +487,20 @@ void opcontrol()
             backClampPnuematic.set_value(backClampState);
          }
       }
-      if (masterController.get_digital_new_press(DIGITAL_DOWN))
+      /*if (masterController.get_digital_new_press(DIGITAL_DOWN))
       {
-         printf("Dump Truck Position: %d\n", (int)dumpTruckMotor.get_position());
-         if((int)dumpTruckMotor.get_position() < -30)
+         printf("Dump Truck Position: %d\n", (int)IntakeStageTwo.get_position());
+         if((int)IntakeStageTwo.get_position() < -30)
          {
-            dumpTruckMotor.move_absolute(-30, 200);
+            IntakeStageTwo.move_absolute(-30, 200);
          }
          if(liftState) 
          {
-            dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
          }
          liftState = !liftState;
          liftPnuematic.set_value(liftState);
-      }
+      }*/
       static bool doinkerState = false;
       if (masterController.get_digital_new_press(DIGITAL_LEFT))
       {

@@ -10,10 +10,8 @@ void safeSkills()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    dumpTruckMotor.tare_position();
-    dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-
-    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
+ 
+     //load ring on alliance stake
     pros::delay(100);
     chassis.moveToPoint(0, 8, 1000 ,{.forwards = true, .maxSpeed = 70}, false); 
     chassis.turnToPoint(26, 8, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO});
@@ -53,10 +51,9 @@ void scoringSkills()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    dumpTruckMotor.tare_position();
-    dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
 
-    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
+
+     //load ring on alliance stake
     pros::delay(100);
     chassis.moveToPoint(0, 8, 1000 ,{.forwards = true, .maxSpeed = 70}, false); 
     chassis.turnToPoint(26, 8, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO});
@@ -69,16 +66,16 @@ void scoringSkills()
     chassis.moveToPoint(44, 8, 3000 ,{.forwards = true, .maxSpeed = 50}, false);
     chassis.moveToPoint(60, 8, 3000 ,{.forwards = true, .maxSpeed = 40}, false);
     chassis.turnToPoint(60, 0, 1000, {.forwards = false, .direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
-    intakeMotor.move_voltage(12000); // eject partial ring
+    IntakeStageOne.move_voltage(12000); // eject partial ring
     pros::delay(500);
-    intakeMotor.move_voltage(0);
-    dumpTruckScore(&dumpTruckMotor); //load ring on mogo
+    IntakeStageOne.move_voltage(0);
+     //load ring on mogo
     pros::delay(100);
     chassis.moveToPoint(60, 0, 1000 ,{.forwards = false, .maxSpeed = 50}, false);
 
     backClampPnuematic.set_value(0);  // Drop first Mogo
     pros::delay(250);
-    intakeMotor.move_voltage(-12000); //intake ring
+    IntakeStageOne.move_voltage(-12000); //intake ring
     chassis.moveToPoint(56, 56, 5000 ,{.forwards = true, .maxSpeed = 50}, false);
 
     chassis.turnToPoint(14, 112, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
@@ -87,33 +84,33 @@ void scoringSkills()
     chassis.moveToPoint(60, 118, 5000 ,{.forwards = false, .maxSpeed = 70}, false);
 
     chassis.moveToPoint(50, 110, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
-    intakeMotor.move_voltage(0);
+    IntakeStageOne.move_voltage(0);
 
     chassis.turnToPoint(0, 104, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
     chassis.moveToPoint(0, 104, 5000 ,{.forwards = false, .maxSpeed = 50}, false); // Empty Mogo by blue alliance stake
     backClampPnuematic.set_value(1);  // Get Far Mogo
     pros::delay(100);
-    dumpTruckScore(&dumpTruckMotor); //load ring on mogo
+     //load ring on mogo
     pros::delay(500);
     chassis.moveToPoint(-40, 104, 5000 ,{.forwards = false, .maxSpeed = 70}, false); // Corner Mogo
     chassis.moveToPoint(-60, 116, 3000 ,{.forwards = false, .maxSpeed = 50}, false); // Corner Mogo
     backClampPnuematic.set_value(0);  // 3rd corner Mogo
 
-    intakeMotor.move_voltage(-12000); //intake ring
+    IntakeStageOne.move_voltage(-12000); //intake ring
     chassis.moveToPoint(-36, 80, 5000 ,{.forwards = true, .maxSpeed = 50}, false); // Ring for Blue Alliance Stake
-    intakeMotor.move_voltage(0);
+    IntakeStageOne.move_voltage(0);
     chassis.moveToPoint(0, 104, 5000 ,{.forwards = false, .maxSpeed = 70}, false); // Near Blue Alliance Stake
     chassis.moveToPoint(0, 124, 2000 ,{.forwards = false, .maxSpeed = 50}, false); // Lineup Blue Alliance Stake
-    dumpTruckScore(&dumpTruckMotor); //load ring on mogo
+     //load ring on mogo
     pros::delay(100);
     chassis.moveToPoint(0, 116, 1000 ,{.forwards = true, .maxSpeed = 70}, false); // Move from Blue Alliance Stake
 
     chassis.moveToPoint(-60, 116, 3000 ,{.forwards = false, .maxSpeed = 50}, false); // Resmash corner Mogo
     chassis.moveToPoint(-48, 104, 3000 ,{.forwards = true, .maxSpeed = 70}, false); // Prepare for last Mogo
 
-    intakeMotor.move_voltage(-12000); //intake ring
+    IntakeStageOne.move_voltage(-12000); //intake ring
     chassis.moveToPoint(-48, 40, 3000 ,{.forwards = true, .maxSpeed = 50}, false); // Get Rings for last Mogo
-    intakeMotor.move_voltage(0); // stop intake
+    IntakeStageOne.move_voltage(0); // stop intake
 }
 
 void wallStakeScoringSkills()
@@ -125,42 +122,41 @@ void wallStakeScoringSkills()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    dumpTruckMotor.tare_position();
-    dumpTruckMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
 
-    dumpTruckScore(&dumpTruckMotor); //load ring on alliance stake
+
+     //load ring on alliance stake
     chassis.moveToPoint(0, 8, 1000 ,{.forwards = true, .maxSpeed = 70}, false); 
     chassis.turnToPoint(26, 8, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO});
     chassis.moveToPoint(26, 8, 3000 ,{.forwards = false, .maxSpeed = 40}, false);
     backClampPnuematic.set_value(1);  // Get first Mogo
     pros::delay(100);
-    intakeMotor.move_velocity(-127); // intake 2 rings
+    IntakeStageOne.move_velocity(-127); // intake 2 rings
     chassis.turnToPoint(44, 8, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70});
     chassis.moveToPoint(44, 8, 3000 ,{.forwards = true, .maxSpeed = 50}, false);
     chassis.moveToPoint(60, 8, 3000 ,{.forwards = true, .maxSpeed = 40}, false);
     chassis.turnToPoint(60, 0, 1000, {.forwards = false, .direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
     chassis.moveToPoint(60, 0, 1000 ,{.forwards = false, .maxSpeed = 50}, false);
     pros::delay(1000);
-    intakeMotor.move_velocity(0);
+    IntakeStageOne.move_velocity(0);
     pros::delay(100);
-    dumpTruckScore(&dumpTruckMotor); //load ring on mogo
+     //load ring on mogo
     pros::delay(100);
     backClampPnuematic.set_value(0);  // Drop first Mogo
     pros::delay(250);
-    intakeMotor.move_velocity(-127); //intake ring
+    IntakeStageOne.move_velocity(-127); //intake ring
     chassis.moveToPoint(56, 56, 8000 ,{.forwards = true, .maxSpeed = 50}, false);
     chassis.turnToHeading(-90, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
     chassis.moveToPoint(60, 56, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
-    intakeMotor.move_velocity(0);
+    IntakeStageOne.move_velocity(0);
     liftPnuematic.set_value(1);  // Wall Stake
     pros::delay(500);
-    dumpTruckScore(&dumpTruckMotor); // Score Wall Stake
+     // Score Wall Stake
     liftPnuematic.set_value(0);
     pros::delay(100);
     return;
 
-    intakeMotor.move_velocity(0);
-    dumpTruckScore(&dumpTruckMotor); //load ring on mogo
+    IntakeStageOne.move_velocity(0);
+     //load ring on mogo
     chassis.moveToPoint(55, 0, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
     backClampPnuematic.set_value(0);  // Drop first Mogo in corner
     chassis.moveToPoint(0, 8, 3000 ,{.forwards = true, .maxSpeed = 70}, false); 

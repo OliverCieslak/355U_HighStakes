@@ -134,7 +134,6 @@ class ParticleFilter {
 
         // Main update loop for the task
         void updateLoop();
-
         static constexpr size_t READING_BUFFER_SIZE = 5;
         std::vector<std::vector<double>> sensorReadingsBuffer; // Circular buffer for each sensor
         std::vector<size_t> bufferIndices; // Current index in each circular buffer
