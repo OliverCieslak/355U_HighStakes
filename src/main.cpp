@@ -29,11 +29,11 @@ pros::MotorGroup rightMotors({14, -2, 4}, pros::MotorGearset::blue);
 pros::Optical firstRingColorSensor(21);
 pros::Imu imu(19);
 
+pros::Motor LadyBrownMotor(7);
 int Stage_One_Intake = 11;
 int Stage_Two_Intake = 1;
 pros::Motor IntakeStageOne(Stage_One_Intake);
 pros::Motor IntakeStageTwo(Stage_Two_Intake);
-pros::adi::DigitalOut liftPnuematic('G');
 pros::adi::DigitalOut backClampPnuematic('H');
 pros::adi::DigitalOut doinker('A');
 
@@ -58,10 +58,10 @@ lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             70   // maximum acceleration (slew)
 );
 */
-lemlib::ControllerSettings linearController(550,   // proportional gain (kP)
+lemlib::ControllerSettings linearController(20,   // proportional gain (kP)
                                             0,   // integral gain (kI)
-                                            6000,   // derivative gain (kD)
-                                             3,   // anti windup
+                                            100,   // derivative gain (kD)
+                                            3,   // anti windup
                                             1,   // small error range, in inches
                                             60,  // small error range timeout, in milliseconds
                                             3,   // large error range, in inches
@@ -72,14 +72,13 @@ lemlib::ControllerSettings linearController(550,   // proportional gain (kP)
 // angular motion controller
 lemlib::ControllerSettings angularController(5, // proportional gain (kP)
                                              0,   // integral gain (kI)
-                                             45,  // derivative gain (kD)
-                                             3,   // anti windup
-                                             1,  // small error range, in degrees
-                                             100, // small error range timeout, in milliseconds
-                                             3,   // large error range, in degrees
-                                             500, // large error range timeout, in milliseconds
+                                             0,  // derivative gain (kD)
+                                             0,   // anti windup
+                                             0,  // small error range, in degrees
+                                             00, // small error range timeout, in milliseconds
+                                             0,   // large error range, in degrees
+                                             00, // large error range timeout, in milliseconds
                                              0    // maximum acceleration (slew)
-
 );
 
 lemlib::TrackingWheel left_vertical_tracking_wheel(&leftMotors, lemlib::Omniwheel::NEW_275, -6, 600);
@@ -430,11 +429,17 @@ void autonomous()
 void opcontrol()
 {
    static int backClampState = 0;
+   static bool doinkerState = false;
    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_COAST);
+   
+   const double STALL_CURRENT_THRESHOLD = 2300; // milliamps
+   const int STALL_TIME_THRESHOLD = 60; // milliseconds
+   
+   uint32_t stall_timer = 0;
+   bool was_stalled = false;
 
    while (true)
    {
-      static bool liftState = false;
       // get left y and right x positions
       int leftY = masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
       int rightX = masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
@@ -444,27 +449,46 @@ void opcontrol()
 
       if (masterController.get_digital(DIGITAL_R1))
       {
-
-         IntakeStageOne.move_velocity(-600);   // Changed from 127
+         double current = std::abs(IntakeStageOne.get_current_draw());
+         if (current > STALL_CURRENT_THRESHOLD) {
+            if (stall_timer == 0) {
+               stall_timer = pros::millis();
+            }
+            else if (pros::millis() - stall_timer > STALL_TIME_THRESHOLD) {
+               IntakeStageOne.move_voltage(12000);
+               if (!was_stalled) {
+                  was_stalled = true;
+               }
+            }
+         } else {
+            stall_timer = 0;
+            was_stalled = false;
+            IntakeStageOne.move_voltage(-12000);
+         }
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
-         IntakeStageOne.move_velocity(600);  // Changed from -127
+         stall_timer = 0;
+         was_stalled = false;
+         IntakeStageOne.move_voltage(12000);
       }
       else
       {
+         stall_timer = 0;
+         was_stalled = false;
          IntakeStageOne.move_velocity(0);
       }
+
       if (masterController.get_digital(DIGITAL_L1))
       {
-         IntakeStageTwo.move_velocity(600);  // Changed from -200
+         IntakeStageTwo.move_voltage(12000);
       }
       else if (masterController.get_digital(DIGITAL_L2)){ 
-         IntakeStageTwo.move_velocity(-600);   // Changed from 200
+         IntakeStageTwo.move_voltage(-12000);
       }
       else
       {
-         IntakeStageTwo.move_velocity(0);
+         IntakeStageTwo.move_voltage(0);
       }
 
       if (masterController.get_digital_new_press(DIGITAL_A))
@@ -479,29 +503,19 @@ void opcontrol()
          }
          backClampPnuematic.set_value(backClampState);
       }
-      if(backClampState == 0 && masterController.get_digital(DIGITAL_B))
+
+      // TODO - Make LadyBrown into a state machine with positions controlled by a PID
+      if (masterController.get_digital(DIGITAL_DOWN))
       {
-         if(backClampDistanceSensor.get() < 17)
-         {
-            backClampState = 1;
-            backClampPnuematic.set_value(backClampState);
-         }
+         LadyBrownMotor.move_voltage(12000);
       }
-      /*if (masterController.get_digital_new_press(DIGITAL_DOWN))
+      else if (masterController.get_digital(DIGITAL_B)){ 
+         LadyBrownMotor.move_voltage(-12000);
+      }
+      else
       {
-         printf("Dump Truck Position: %d\n", (int)IntakeStageTwo.get_position());
-         if((int)IntakeStageTwo.get_position() < -30)
-         {
-            IntakeStageTwo.move_absolute(-30, 200);
-         }
-         if(liftState) 
-         {
-            IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-         }
-         liftState = !liftState;
-         liftPnuematic.set_value(liftState);
-      }*/
-      static bool doinkerState = false;
+         LadyBrownMotor.move_voltage(0);
+      }
       if (masterController.get_digital_new_press(DIGITAL_LEFT))
       {
          doinkerState = !doinkerState;

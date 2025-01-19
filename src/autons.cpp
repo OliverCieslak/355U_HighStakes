@@ -59,7 +59,7 @@ void qualsGoalRushAuton()
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
     //backClampPnuematic.set_value(1);
-    chassis.moveToPoint(0 * autonSideDetected, -30, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(0 * autonSideDetected, -30, 4000 ,{.forwards = false, .maxSpeed = 127}, false);
     chassis.moveToPoint(6 * autonSideDetected, -43, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
 
     backClampPnuematic.set_value(1); 

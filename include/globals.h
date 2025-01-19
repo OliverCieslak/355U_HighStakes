@@ -13,13 +13,14 @@ extern const int BLUE_SIDE_AUTON;
 extern pros::Controller masterController;
 extern pros::Motor IntakeStageOne;
 extern pros::Motor IntakeStageTwo;
+extern pros::Motor LadyBrownMotor;
 extern lemlib::Chassis chassis;
 
 extern rd::Console console;
 extern pros::Imu imu;
 
 extern pros::adi::DigitalOut backClampPnuematic;
-extern pros::adi::DigitalOut liftPnuematic;
+extern pros::adi::DigitalOut doinker;
 extern pros::Optical firstRingColorSensor;
 extern pros::Distance backClampDistanceSensor;
 extern pros::Distance frontDistanceSensor;

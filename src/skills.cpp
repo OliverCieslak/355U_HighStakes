@@ -148,10 +148,10 @@ void wallStakeScoringSkills()
     chassis.turnToHeading(-90, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
     chassis.moveToPoint(60, 56, 2000 ,{.forwards = false, .maxSpeed = 50}, false);
     IntakeStageOne.move_velocity(0);
-    liftPnuematic.set_value(1);  // Wall Stake
+    // liftPnuematic.set_value(1);  // Wall Stake
     pros::delay(500);
      // Score Wall Stake
-    liftPnuematic.set_value(0);
+    // liftPnuematic.set_value(0);
     pros::delay(100);
     return;
 
