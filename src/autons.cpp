@@ -24,8 +24,6 @@ void qualsGoalRushAutonTweaked()
     IntakeStageTwo.move_velocity(0);
 
 
-    // Create a pros::Task to run the intakeUntilRing function
-    
     IntakeStageOne.move_velocity(-127);
     chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
@@ -273,44 +271,19 @@ void simpleSingleMogo() {
     IntakeStageTwo->set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
 }*/
 
-void doAutoclamp() {
-    while(backClampDistanceSensor.get_distance() > 15 || backClampDistanceSensor.get_distance() < 0) {
-        pros::delay(20);
-    }
-    backClampPnuematic.set_value(1);
-}
-
-void intakeUntilRing() {
-    int startTime = pros::millis();
-    IntakeStageOne
-    .move_voltage(-127);
-    pros::delay(MIN_INTAKE_TIME);
-    while(firstRingColorSensor.get_proximity() < 100 && ((pros::millis() - startTime) < MAX_INTAKE_TIME)) {
-        pros::delay(20);
-    }
-    pros::delay(POST_INTAKE_DELAY);
-    IntakeStageOne
-    .move_voltage(0);
-}
-
 void intakeStallDetection() {
     int startTime = pros::millis();
-    IntakeStageOne
-    .move_voltage(-12000);
+    IntakeStageOne.move_voltage(-12000);
     pros::delay(MIN_INTAKE_TIME);
     while((pros::millis() - startTime) < MAX_INTAKE_TIME) {
-        if(abs(IntakeStageOne
-        .get_actual_velocity()) == 0) {
-            IntakeStageOne
-            .move_voltage(12000);
+        if(abs(IntakeStageOne.get_actual_velocity()) == 0) {
+            IntakeStageOne.move_voltage(12000);
             pros::delay(100);
-            IntakeStageOne
-            .move_voltage(-12000);
+            IntakeStageOne.move_voltage(-12000);
         } else {
             pros::delay(20);
         }
     }
     pros::delay(POST_INTAKE_DELAY);
-    IntakeStageOne
-    .move_voltage(0);
+    IntakeStageOne.move_voltage(0);
 }

@@ -1,7 +1,11 @@
 #pragma once
 
+#include "types.hpp"
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "robodash/api.h"
+#include "api.h"
+#include "pros/optical.hpp"
+#include "pros/distance.hpp"
 
 extern int Stage_One_Intake;
 extern int Stage_Two_Intake;
@@ -22,7 +26,7 @@ extern pros::Imu imu;
 extern pros::adi::DigitalOut backClampPnuematic;
 extern pros::adi::DigitalOut doinker;
 extern pros::Optical firstRingColorSensor;
-extern pros::Distance backClampDistanceSensor;
+extern pros::Distance backDistanceSensor;
 extern pros::Distance frontDistanceSensor;
 extern pros::Distance lefttDistanceSensor;
 extern pros::Distance rightDistanceSensor;
@@ -31,3 +35,10 @@ extern rd::Console console;
 extern int MIN_INTAKE_TIME;
 extern int POST_INTAKE_DELAY;
 extern int MAX_INTAKE_TIME;
+ 
+extern int ladyBrownStateTargets[];
+
+extern RingDetectorState prevColorState;
+extern RingDetectorState currentColorState;
+extern HookState hookState;
+extern bool colorSortEnabled;

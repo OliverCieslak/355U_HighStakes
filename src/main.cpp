@@ -2,7 +2,9 @@
 #include "robodash/api.h"
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "autons.h"
-#include "particle.hpp"  // Add this include
+#include "colorsort.hpp"
+#include "ladybrown.hpp"
+#include "particle.hpp"
 
 rd::Selector selector({
                         {SIMPLE_ALLIANCE, &simpleAllianceStake},
@@ -26,10 +28,18 @@ pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup leftMotors({10, -9, -8},
                             pros::MotorGearset::blue);
 pros::MotorGroup rightMotors({14, -2, 4}, pros::MotorGearset::blue);
-pros::Optical firstRingColorSensor(21);
+pros::Optical firstRingColorSensor(6);
+// Remove these lines since they're defined in colorsort.cpp
+// RingDetectorState prevColorState = NO_RING_DETECTED;
+// RingDetectorState currentColorState = NO_RING_DETECTED;
+HookState hookState = HOOK_STOPPPED;
 pros::Imu imu(19);
 
 pros::Motor LadyBrownMotor(7);
+// TODO - Figure out these target values
+int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -500, -1500, -2000, -2500, -3000}; //  TODO - Tune these
+LadyBrownState ladyBrownState = RESTING;
+bool colorSortEnabled = false;
 int Stage_One_Intake = 11;
 int Stage_Two_Intake = 1;
 pros::Motor IntakeStageOne(Stage_One_Intake);
@@ -104,8 +114,6 @@ lemlib::ExpoDriveCurve steerCurve(3,    // joystick deadband out of 127
                                   1.019 // expo curve gain
 );
 // Enumeration for the color states
-
-// Enumeration for the color states
 enum ColorState
 {
    RED,
@@ -114,53 +122,26 @@ enum ColorState
 };
 
 // Global variable to keep track of the current color state
-ColorState currentColorState = NO_COLOR;
+// Remove this conflicting declaration
+// ColorState currentColorState = NO_COLOR;
 
 const int RED_SIDE_AUTON = 1;
 const int BLUE_SIDE_AUTON = -1;
 int autonSideDetected = RED_SIDE_AUTON;
 
-pros::Distance backClampDistanceSensor(12);
-pros::Distance frontDistanceSensor(13);
-pros::Distance rightDistanceSensor(14);
-pros::Distance leftDistanceSensor(15);
+pros::Distance backDistanceSensor(18);
+pros::Distance frontDistanceSensor(12);
+pros::Distance rightDistanceSensor(5);
+pros::Distance leftDistanceSensor(21);
+
+// TODO - Tune these values
 std::vector<ParticleFilter::SensorMount> sensorMounts = {
     {&frontDistanceSensor, lemlib::Pose(4.5, 4.5, lemlib::degToRad(0))},
     {&leftDistanceSensor, lemlib::Pose(4.5, 4.5, lemlib::degToRad(-90))},
     {&rightDistanceSensor, lemlib::Pose(-2.0, -4.5, lemlib::degToRad(90))},
-    {&backClampDistanceSensor, lemlib::Pose(-7.5, 0.0, lemlib::degToRad(180))}
+    {&backDistanceSensor, lemlib::Pose(-7.5, 0.0, lemlib::degToRad(180))}
 };
 ParticleFilter particleFilter(100, sensorMounts);
-
-// Function to cycle through the color states based on the current hue
-void getAutonColorState()
-{
-   firstRingColorSensor.set_led_pwm(25);
-   pros::delay(100); // Wait for the sensor to stabilize
-   int colorDistance = (int)firstRingColorSensor.get_proximity();
-   printf("Color Distance: %d\n", colorDistance);
-   if (colorDistance < 100)
-   {
-      return;
-   }
-
-   int hue = (int)firstRingColorSensor.get_hue(); // Get the current hue from the sensor
-   printf("Color Hue: %d\n", hue);
-
-   // Check the hue range and update the state
-   if (hue >= 0 && hue <= 20)
-   {
-      autonSideDetected = RED_SIDE_AUTON;
-   }
-   else if (hue >= 180 && hue <= 240)
-   {
-      autonSideDetected = BLUE_SIDE_AUTON;
-   }
-    else if (hue >= 300 && hue <= 340)
-   {
-      autonSideDetected = RED_SIDE_AUTON;
-   }
-}
 
 // create the chassis
 lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors, &throttleCurve, &steerCurve);
@@ -180,8 +161,19 @@ void initialize()
    chassis.calibrate();
    chassis.setPose(0, 0, 0);
 
-   IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE); 
+   IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
    IntakeStageTwo.tare_position();
+
+   LadyBrownMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+   LadyBrownMotor.tare_position();
+
+    pros::Task myAsyncControlTask([]{
+        while (true) {
+            ladyBrownControl();
+            hookColorSort();
+            pros::delay(10);
+        }
+    });
 
    console.println("Initializing robot...Done!");
 }
@@ -309,7 +301,7 @@ void competition_initialize() {
    //printf("---------------------\n");
    estimatedPose = particleFilter.getEstimatedPose();
    double rdist = 0.0393701 * rightDistanceSensor.get_distance();
-   double bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   double bdist = 0.0393701 * backDistanceSensor.get_distance();
    double fdist = 0.0393701 * frontDistanceSensor.get_distance();
    double ldist = 0.0393701 * leftDistanceSensor.get_distance();
    sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
@@ -327,7 +319,7 @@ void competition_initialize() {
    printf("1 second later....\n");
    estimatedPose = particleFilter.getEstimatedPose();
    rdist = 0.0393701 * rightDistanceSensor.get_distance();
-   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   bdist = 0.0393701 * backDistanceSensor.get_distance();
    fdist = 0.0393701 * frontDistanceSensor.get_distance();
    ldist = 0.0393701 * leftDistanceSensor.get_distance();
    sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
@@ -345,7 +337,7 @@ void competition_initialize() {
    printf("5 more seconds later....\n");
    estimatedPose = particleFilter.getEstimatedPose();
    rdist = 0.0393701 * rightDistanceSensor.get_distance();
-   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   bdist = 0.0393701 * backDistanceSensor.get_distance();
    fdist = 0.0393701 * frontDistanceSensor.get_distance();
    ldist = 0.0393701 * leftDistanceSensor.get_distance();
    sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
@@ -363,7 +355,7 @@ void competition_initialize() {
    printf("10 more seconds later....\n");
    estimatedPose = particleFilter.getEstimatedPose();
    rdist = 0.0393701 * rightDistanceSensor.get_distance();
-   bdist = 0.0393701 * backClampDistanceSensor.get_distance();
+   bdist = 0.0393701 * backDistanceSensor.get_distance();
    fdist = 0.0393701 * frontDistanceSensor.get_distance();
    ldist = 0.0393701 * leftDistanceSensor.get_distance();
    sprintf(buffer, "P: %d, %d, %d", (int)estimatedPose.x, (int)estimatedPose.y, (int)lemlib::radToDeg(estimatedPose.theta));
@@ -428,15 +420,27 @@ void autonomous()
  */
 void opcontrol()
 {
+   colorSortEnabled = false;
+   if(colorSortEnabled) {
+      firstRingColorSensor.set_led_pwm(100);
+   } else {
+      firstRingColorSensor.set_led_pwm(0);
+   }
    static int backClampState = 0;
    static bool doinkerState = false;
    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_COAST);
    
-   const double STALL_CURRENT_THRESHOLD = 2300; // milliamps
-   const int STALL_TIME_THRESHOLD = 60; // milliseconds
+   const double STAGE1_STALL_CURRENT_THRESHOLD = 2300; // milliamps
+   const int STAGE1_STALL_TIME_THRESHOLD = 60; // milliseconds
    
-   uint32_t stall_timer = 0;
-   bool was_stalled = false;
+   uint32_t stage1_stall_timer = 0;
+   bool stage1_was_stalled = false;
+
+   const double STAGE2_STALL_CURRENT_THRESHOLD = 2300; // milliamps
+   const int STAGE2_STALL_TIME_THRESHOLD = 60; // milliseconds
+   
+   uint32_t stage2_stall_timer = 0;
+   bool stage2_was_stalled = false;
 
    while (true)
    {
@@ -450,45 +454,45 @@ void opcontrol()
       if (masterController.get_digital(DIGITAL_R1))
       {
          double current = std::abs(IntakeStageOne.get_current_draw());
-         if (current > STALL_CURRENT_THRESHOLD) {
-            if (stall_timer == 0) {
-               stall_timer = pros::millis();
+         if (current > STAGE1_STALL_CURRENT_THRESHOLD) {
+            if (stage1_stall_timer == 0) {
+               stage1_stall_timer = pros::millis();
             }
-            else if (pros::millis() - stall_timer > STALL_TIME_THRESHOLD) {
+            else if (pros::millis() - stage1_stall_timer > STAGE1_STALL_TIME_THRESHOLD) {
                IntakeStageOne.move_voltage(12000);
-               if (!was_stalled) {
-                  was_stalled = true;
+               if (!stage1_was_stalled) {
+                  stage1_was_stalled = true;
                }
             }
          } else {
-            stall_timer = 0;
-            was_stalled = false;
+            stage1_stall_timer = 0;
+            stage1_was_stalled = false;
             IntakeStageOne.move_voltage(-12000);
          }
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
-         stall_timer = 0;
-         was_stalled = false;
+         stage1_stall_timer = 0;
+         stage1_was_stalled = false;
          IntakeStageOne.move_voltage(12000);
       }
       else
       {
-         stall_timer = 0;
-         was_stalled = false;
-         IntakeStageOne.move_velocity(0);
+         stage1_stall_timer = 0;
+         stage1_was_stalled = false;
+         IntakeStageOne.move_voltage(0);
       }
 
       if (masterController.get_digital(DIGITAL_L1))
       {
-         IntakeStageTwo.move_voltage(12000);
+         hookState = HOOK_UP;
       }
       else if (masterController.get_digital(DIGITAL_L2)){ 
-         IntakeStageTwo.move_voltage(-12000);
+         hookState = HOOK_DOWN;
       }
       else
       {
-         IntakeStageTwo.move_voltage(0);
+         hookState = HOOK_STOPPPED;
       }
 
       if (masterController.get_digital_new_press(DIGITAL_A))
@@ -504,23 +508,28 @@ void opcontrol()
          backClampPnuematic.set_value(backClampState);
       }
 
-      // TODO - Make LadyBrown into a state machine with positions controlled by a PID
-      if (masterController.get_digital(DIGITAL_DOWN))
+      if (masterController.get_digital_new_press(DIGITAL_DOWN))
       {
-         LadyBrownMotor.move_voltage(12000);
+         nextLadyBrownState();
       }
-      else if (masterController.get_digital(DIGITAL_B)){ 
-         LadyBrownMotor.move_voltage(-12000);
+      if (masterController.get_digital_new_press(DIGITAL_B)){ 
+         prevLadyBrownState();
       }
-      else
-      {
-         LadyBrownMotor.move_voltage(0);
-      }
+
       if (masterController.get_digital_new_press(DIGITAL_LEFT))
       {
          doinkerState = !doinkerState;
          
          doinker.set_value(doinkerState);
+      }
+
+      if(masterController.get_digital_new_press(DIGITAL_X)) {
+         colorSortEnabled = !colorSortEnabled;
+         if(colorSortEnabled) {
+            firstRingColorSensor.set_led_pwm(100);
+         } else {
+            firstRingColorSensor.set_led_pwm(0);
+         }
       }
       // delay to save resources
       pros::delay(20);
