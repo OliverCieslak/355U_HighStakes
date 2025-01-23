@@ -6,29 +6,31 @@ int POST_INTAKE_DELAY = 500;
 int MAX_INTAKE_TIME = 3000;
 
 void qualsGoalRushAutonTweaked()
-{
+{   
     // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    //backClampPnuematic.set_value(1);
-    chassis.moveToPoint(0 * autonSideDetected, -28, 4000 ,{.forwards = false, .maxSpeed = 70}, false);
-    chassis.moveToPoint(6.5 * autonSideDetected, -42, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
-
+    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
+    //backClampPnuematic.set_value(1); 
+    chassis.moveToPoint(0 * autonSideDetected, -28, 4000 ,{.forwards = false, .maxSpeed = 70}, false); 
+    chassis.moveToPoint(8 * autonSideDetected, -44.5, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
+    
     pros::delay(50);
     backClampPnuematic.set_value(1);
     pros::delay(150);
-    IntakeStageTwo.move_velocity(-127);
-    pros::delay(500);
-    IntakeStageTwo.move_velocity(0);
+    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
 
+    hookState = HOOK_UP;
+    pros::delay(250);
+    hookState = HOOK_STOPPPED;
 
     IntakeStageOne.move_velocity(-127);
-    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
+     //drive to close ring 
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
 
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
+    pros::delay(150); 
     IntakeStageOne.move_velocity(0);
     chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
      
@@ -58,7 +60,7 @@ void qualsGoalRushAuton()
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
     //backClampPnuematic.set_value(1);
     chassis.moveToPoint(0 * autonSideDetected, -30, 4000 ,{.forwards = false, .maxSpeed = 127}, false);
-    chassis.moveToPoint(6 * autonSideDetected, -43, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
+    chassis.moveToPoint(6 * autonSideDetected, -50, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
 
     backClampPnuematic.set_value(1); 
      

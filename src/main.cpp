@@ -18,7 +18,7 @@ rd::Selector selector({
                         {LINEAR_PID_MOVEMENT, &linearPidMovementTest},
                         {TURN_PID_MOVEMENT, &turnPidMovementTest}, 
                        });
-// linear_pid_movement
+
 rd::Console console;
 
 // controller
@@ -68,26 +68,26 @@ lemlib::ControllerSettings linearController(93,   // proportional gain (kP)
                                             70   // maximum acceleration (slew)
 );
 */
-lemlib::ControllerSettings linearController(20,   // proportional gain (kP)
+lemlib::ControllerSettings linearController(20,  // proportional gain (kP)
                                             0,   // integral gain (kI)
-                                            100,   // derivative gain (kD)
+                                            100, // derivative gain (kD)
                                             3,   // anti windup
                                             1,   // small error range, in inches
                                             60,  // small error range timeout, in milliseconds
                                             3,   // large error range, in inches
                                             250, // large error range timeout, in milliseconds
-                                            127   // maximum acceleration (slew)
+                                            0    // maximum acceleration (slew)
 );
 
 // angular motion controller
-lemlib::ControllerSettings angularController(5, // proportional gain (kP)
+lemlib::ControllerSettings angularController(4,   // proportional gain (kP)
                                              0,   // integral gain (kI)
-                                             0,  // derivative gain (kD)
+                                             25,  // derivative gain (kD)
                                              0,   // anti windup
-                                             0,  // small error range, in degrees
-                                             00, // small error range timeout, in milliseconds
-                                             0,   // large error range, in degrees
-                                             00, // large error range timeout, in milliseconds
+                                             1,   // small error range, in inches
+                                             100, // small error range timeout, in milliseconds
+                                             3,   // large error range, in inches
+                                             500, // large error range timeout, in milliseconds
                                              0    // maximum acceleration (slew)
 );
 
@@ -185,7 +185,9 @@ void initialize()
  */
 void disabled() {
    printf("Disabled robot...\n");
+
 }
+
 
 char auton_name_in_robodash_file[256];
 
@@ -275,11 +277,12 @@ void startParticleFilter()
  * starts.
  */
 void competition_initialize() {
+   
    printf("Initializing competition...\n");
 
    stopLemLibTrackingTask();
    char buffer[100];
-
+   getAutonColorState();
    lemlib::Pose initialPose = lemlib::Pose(-48, -48, lemlib::degToRad(90));
    chassis.setPose(initialPose);
    particleFilter.initialize(initialPose, &chassis, 1.0, lemlib::degToRad(5));
