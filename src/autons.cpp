@@ -13,7 +13,7 @@ void qualsGoalRushAutonTweaked()
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
     //backClampPnuematic.set_value(1); 
-    chassis.moveToPoint(0 * autonSideDetected, -28, 4000 ,{.forwards = false, .maxSpeed = 70}, false); 
+    chassis.moveToPoint(0 * autonSideDetected, -28, 4000 ,{.forwards = false, .maxSpeed = 90}, false); 
     chassis.moveToPoint(8 * autonSideDetected, -44.5, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
     
     pros::delay(50);
@@ -22,7 +22,7 @@ void qualsGoalRushAutonTweaked()
     chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
 
     hookState = HOOK_UP;
-    pros::delay(250);
+    pros::delay(350);
     hookState = HOOK_STOPPPED;
 
     IntakeStageOne.move_velocity(-127);
@@ -30,23 +30,22 @@ void qualsGoalRushAutonTweaked()
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
 
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
-    pros::delay(150); 
-    IntakeStageOne.move_velocity(0);
+    pros::delay(150);
     chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
      
     backClampPnuematic.set_value(0);  // Drop middle stake 
     chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
-    //IntakeStageOne.move_velocity(-127);
+    IntakeStageOne.move_velocity(-127);
 
     chassis.turnToPoint(38 * autonSideDetected, -26, 1000 ,{.forwards = false}, false); 
     chassis.moveToPoint(38 * autonSideDetected, -26, 2500 ,{.forwards = false, .maxSpeed = 30}, false); 
     
     backClampPnuematic.set_value(1);
     pros::delay(100);
-    IntakeStageTwo.move_velocity(-127);
+    hookState = HOOK_UP;
 
     // Touch ladder
-    chassis.moveToPoint(36 * autonSideDetected, -40, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
+    chassis.moveToPoint(38 * autonSideDetected, -44, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 }
 
 void qualsGoalRushAuton()
