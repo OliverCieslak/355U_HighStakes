@@ -48,44 +48,77 @@ void qualsGoalRushAutonTweaked()
     chassis.moveToPoint(38 * autonSideDetected, -44, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 }
 
-void qualsGoalRushAuton()
-{
-    pros::Motor IntakeStageOne(Stage_One_Intake);
-    pros::Motor IntakeStageTwo(Stage_Two_Intake);
-
+void elimGoalRushAuton()
+{   
+    // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
-    //backClampPnuematic.set_value(1);
-    chassis.moveToPoint(0 * autonSideDetected, -30, 4000 ,{.forwards = false, .maxSpeed = 127}, false);
-    chassis.moveToPoint(6 * autonSideDetected, -50, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
+    chassis.moveToPoint(0 * autonSideDetected, 38, 
+                        4000, {.forwards = true, .maxSpeed = 127}, false);
+    doinker.set_value(1);
+    pros::delay(50);
+    chassis.moveToPoint(0 * autonSideDetected, 0, 
+                        4000, {.forwards = false, .maxSpeed = 90}, false);
+    doinker.set_value(0);
+    pros::delay(200);
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
+    } else {
+        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
+    }
+    return;
+    chassis.moveToPoint(4 * autonSideDetected, 25, 
+                        4000, {.forwards = false, .maxSpeed = 30}, false);
 
-    backClampPnuematic.set_value(1); 
-     
+    backClampPnuematic.set_value(1);
+    pros::delay(50);
+    hookState = HOOK_UP;
+    pros::delay(100);
+    chassis.moveToPoint(0 * autonSideDetected, 0, 
+                        4000, {.forwards = true, .maxSpeed = 90}, false);
 
-    IntakeStageOne
-    .move_velocity(-127); //intake ring 
-    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
+    hookState = HOOK_STOPPPED;
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
+    } else {
+        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
+    }
+    backClampPnuematic.set_value(0);
+    return;
+    chassis.moveToPoint(8 * autonSideDetected, -44.5, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
+    
+    pros::delay(50);
+    backClampPnuematic.set_value(1);
+    pros::delay(150);
+    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
+
+    hookState = HOOK_UP;
+    pros::delay(350);
+    hookState = HOOK_STOPPPED;
+
+    IntakeStageOne.move_velocity(-127);
+     //drive to close ring 
     chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
-    pros::delay(900); 
 
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
-    chassis.moveToPoint(12 * autonSideDetected, -5, 2000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to close ring 
-    backClampPnuematic.set_value(0);  // Drop middle stake 
-    chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
-
-    //chassis.turnToHeading(90 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}); 
-    chassis.moveToPoint(24 * autonSideDetected, -26, 3000 ,{.forwards = false, .maxSpeed = 70}, false); 
-    backClampPnuematic.set_value(1); 
-    IntakeStageOne
-    .move_velocity(0); 
-    pros::delay(100); 
+    pros::delay(150);
+    chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
      
+    backClampPnuematic.set_value(0);  // Drop middle stake 
+    chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
+    IntakeStageOne.move_velocity(-127);
+
+    chassis.turnToPoint(38 * autonSideDetected, -26, 1000 ,{.forwards = false}, false); 
+    chassis.moveToPoint(38 * autonSideDetected, -26, 2500 ,{.forwards = false, .maxSpeed = 30}, false); 
+    
+    backClampPnuematic.set_value(1);
+    pros::delay(100);
+    hookState = HOOK_UP;
 
     // Touch ladder
-    chassis.moveToPoint(36 * autonSideDetected, -40, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
-
+    chassis.moveToPoint(38 * autonSideDetected, -44, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 }
 
 void simpleAuton()
@@ -152,10 +185,6 @@ void turnPidMovementTest()
 
 void goalFill() //negative side for quals
 {
-    pros::Motor IntakeStageOne
-    (Stage_One_Intake); 
-    pros::Motor IntakeStageTwo(Stage_One_Intake); 
-
     chassis.cancelAllMotions(); 
     chassis.setPose(0, 0, 0); 
     lemlib::Pose start_pose = chassis.getPose(); 
@@ -171,17 +200,11 @@ void goalFill() //negative side for quals
     chassis.moveToPoint(30 * autonSideDetected, 15, 2000 ,{.forwards = false, .maxSpeed = 70}, false);
     backClampPnuematic.set_value(1);
     //chassis.moveToPoint(20 * autonSideDetected, 15, 4000 ,{.forwards = true, .maxSpeed = 70}, false);
-    
-
 }
 
 
 void twoGoalSideFill() //elims goal rush
 {
-    pros::Motor IntakeStageOne
-    (Stage_One_Intake);
-    pros::Motor IntakeStageTwo(Stage_One_Intake);
-
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
@@ -193,23 +216,17 @@ void twoGoalSideFill() //elims goal rush
     
 
     // backClampPnuematic.set_value(0); //drop stake
-    IntakeStageOne
-    .move_velocity(-127); //intake ring 
+    IntakeStageOne.move_velocity(-127); //intake ring 
     chassis.moveToPoint(-9 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to close ring 
     chassis.moveToPoint(-9 * autonSideDetected, -22, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
     pros::delay(700);
-    IntakeStageOne
-    .move_velocity(0);
-
-    IntakeStageTwo.move_velocity(-127); //load ring
+    IntakeStageOne.move_velocity(0);
+    hookState = HOOK_UP;
     pros::delay(800);
-    IntakeStageTwo.move_velocity(127);
-    pros::delay(600);
-    IntakeStageTwo.move_velocity(0);
+    hookState = HOOK_STOPPPED;
 
     backClampPnuematic.set_value(0); 
-    IntakeStageOne
-    .move_velocity(127);  
+    IntakeStageOne.move_velocity(127);  
 
     chassis.moveToPoint(-48 * autonSideDetected, -8, 2000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
     // backClampPnuematic.set_value(0); //load ring on stake
@@ -223,15 +240,9 @@ void twoGoalSideFill() //elims goal rush
     IntakeStageTwo.move_velocity(0);
 
     chassis.moveToPoint(-54 * autonSideDetected, 0, 2000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up other stake
-
 }
 
 void simpleAllianceStake() {
-    pros::Motor IntakeStageOne
-    (Stage_One_Intake);
-    pros::Motor IntakeStageTwo(Stage_One_Intake);
-    IntakeStageTwo.tare_position();
-
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
@@ -239,17 +250,10 @@ void simpleAllianceStake() {
 
     chassis.moveToPoint(0 * autonSideDetected, -12, 2000 ,{.forwards = false, .maxSpeed = 50}, false); 
     chassis.waitUntil(6);
-    
-
     chassis.moveToPoint(4 * autonSideDetected, 20, 2000 ,{.forwards = true, .maxSpeed = 50}, false); 
 }
 
 void simpleSingleMogo() {
-    pros::Motor IntakeStageOne
-    (Stage_One_Intake);
-    pros::Motor IntakeStageTwo(Stage_One_Intake);
-    IntakeStageTwo.tare_position();
-
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
@@ -258,19 +262,13 @@ void simpleSingleMogo() {
     chassis.moveToPoint(0 * autonSideDetected, -24, 2000 ,{.forwards = false, .maxSpeed = 50}, false); 
     chassis.waitUntil(22);
     backClampPnuematic.set_value(1);
-    
-    pros::delay(500); 
-    chassis.moveToPoint(-15 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
-}
-
-/*void dumpTruckScore(pros::Motor *IntakeStageTwo) {
-    IntakeStageTwo->tare_position();
-    int startTime = pros::millis();
-    IntakeStageTwo->move_voltage(-12000);
     pros::delay(500);
-    IntakeStageTwo->move_absolute(0, 127);
-    IntakeStageTwo->set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
-}*/
+    hookState = HOOK_UP;
+    pros::delay(100);
+    chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO});
+    chassis.moveToPoint(0 * autonSideDetected, -45, 4000 ,{.forwards = true, .maxSpeed = 50}, false);
+    hookState = HOOK_STOPPPED;
+}
 
 void intakeStallDetection() {
     int startTime = pros::millis();
