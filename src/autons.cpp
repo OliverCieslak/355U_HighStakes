@@ -64,61 +64,53 @@ void elimGoalRushAuton()
     doinker.set_value(0);
     pros::delay(200);
     if(autonSideDetected == RED_SIDE_AUTON) {
-        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
+        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
     } else {
-        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
+        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE}, false);
     }
-    return;
-    chassis.moveToPoint(4 * autonSideDetected, 25, 
+    chassis.cancelAllMotions();
+    chassis.moveToPoint(-4 * autonSideDetected, 25, 
                         4000, {.forwards = false, .maxSpeed = 30}, false);
+    chassis.cancelAllMotions();
 
     backClampPnuematic.set_value(1);
-    pros::delay(50);
+    pros::delay(250);
     hookState = HOOK_UP;
     pros::delay(100);
     chassis.moveToPoint(0 * autonSideDetected, 0, 
                         4000, {.forwards = true, .maxSpeed = 90}, false);
+    chassis.cancelAllMotions();
 
     hookState = HOOK_STOPPPED;
+
+    // Get ready to place goal rush in corner
     if(autonSideDetected == RED_SIDE_AUTON) {
-        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE});
+        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE}, false);
     } else {
-        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE});
+        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
     }
+    chassis.cancelAllMotions();
+    pros::delay(200);
     backClampPnuematic.set_value(0);
-    return;
-    chassis.moveToPoint(8 * autonSideDetected, -44.5, 3000 ,{.forwards = false, .maxSpeed = 50}, false); //drive to pick up the middle stake
     
-    pros::delay(50);
-    backClampPnuematic.set_value(1);
-    pros::delay(150);
-    chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
+    // Get ready to get ring
+    IntakeStageOne.move_velocity(-127);
 
+    chassis.moveToPoint(-12 * autonSideDetected, 24, 
+                        4000, {.forwards = true, .maxSpeed = 40}, false);
+    
+    // Now we have the ring and need to get the MoGo
+    chassis.turnToHeading(95 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO}, false);
+    chassis.moveToPoint(-32 * autonSideDetected, 32, 
+                        4000, {.forwards = false, .maxSpeed = 40}, false);
+
+    backClampPnuematic.set_value(1);
+    pros::delay(250);
     hookState = HOOK_UP;
-    pros::delay(350);
+    pros::delay(500);
+    chassis.turnToHeading(45 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO}, false);
+    IntakeStageOne.move_velocity(0);
     hookState = HOOK_STOPPPED;
-
-    IntakeStageOne.move_velocity(-127);
-     //drive to close ring 
-    chassis.moveToPoint(12 * autonSideDetected, -28, 2000 ,{.forwards = true, .maxSpeed = 30}, false); 
-
-    chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
-    pros::delay(150);
-    chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
-     
-    backClampPnuematic.set_value(0);  // Drop middle stake 
-    chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
-    IntakeStageOne.move_velocity(-127);
-
-    chassis.turnToPoint(38 * autonSideDetected, -26, 1000 ,{.forwards = false}, false); 
-    chassis.moveToPoint(38 * autonSideDetected, -26, 2500 ,{.forwards = false, .maxSpeed = 30}, false); 
-    
-    backClampPnuematic.set_value(1);
-    pros::delay(100);
-    hookState = HOOK_UP;
-
-    // Touch ladder
-    chassis.moveToPoint(38 * autonSideDetected, -44, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 }
 
 void simpleAuton()
