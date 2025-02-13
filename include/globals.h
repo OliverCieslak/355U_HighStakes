@@ -6,6 +6,7 @@
 #include "api.h"
 #include "pros/optical.hpp"
 #include "pros/distance.hpp"
+#include "particle.hpp"
 
 extern int Stage_One_Intake;
 extern int Stage_Two_Intake;
@@ -24,12 +25,15 @@ extern rd::Console console;
 extern pros::Imu imu;
 
 extern pros::adi::DigitalOut backClampPnuematic;
-extern pros::adi::DigitalOut doinker;
+extern pros::adi::DigitalOut leftDoinker;
+extern pros::adi::DigitalOut rightDoinker;
 extern pros::Optical firstRingColorSensor;
+extern pros::Optical secondRingColorSensor;
 extern pros::Distance backDistanceSensor;
 extern pros::Distance frontDistanceSensor;
-extern pros::Distance lefttDistanceSensor;
+extern pros::Distance leftDistanceSensor;
 extern pros::Distance rightDistanceSensor;
+extern pros::adi::DigitalIn goalDetector;
 
 extern rd::Console console;
 extern int MIN_INTAKE_TIME;
@@ -42,3 +46,6 @@ extern RingDetectorState prevColorState;
 extern RingDetectorState currentColorState;
 extern HookState hookState;
 extern bool colorSortEnabled;
+
+extern pros::Task *trackingTask;
+extern ParticleFilter particleFilter;

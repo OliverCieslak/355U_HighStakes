@@ -1,4 +1,3 @@
-
 #pragma once
 
 enum RingDetectorState {
@@ -8,7 +7,8 @@ enum RingDetectorState {
 };
 
 enum HookState {
-    HOOK_DOWN = -1,
-    HOOK_STOPPPED = 0,
-    HOOK_UP = 1,
+    HOOK_DOWN = -100,
+    HOOK_STOPPED = 0,
+    HOOK_UP = 100,
+    HOOK_UP_AUTON = 75  // 75% speed for autonomous (represented as an integer percentage)
 };

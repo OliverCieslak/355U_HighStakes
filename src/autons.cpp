@@ -22,8 +22,8 @@ void qualsGoalRushAutonTweaked()
     chassis.moveToPoint(12 * autonSideDetected, -31, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
 
     hookState = HOOK_UP;
-    pros::delay(350);
-    hookState = HOOK_STOPPPED;
+    pros::delay(400);
+    hookState = HOOK_STOPPED;
 
     IntakeStageOne.move_velocity(-127);
      //drive to close ring 
@@ -32,6 +32,10 @@ void qualsGoalRushAutonTweaked()
     chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::AUTO}); 
     pros::delay(150);
     chassis.moveToPoint(0 * autonSideDetected, 0, 3000 ,{.forwards = false, .maxSpeed = 70}, false); //drive to corner 
+
+    hookState = HOOK_UP;
+    pros::delay(500);
+    hookState = HOOK_STOPPED;
      
     backClampPnuematic.set_value(0);  // Drop middle stake 
     chassis.moveToPoint(12 * autonSideDetected, -20, 2000 ,{.forwards = true, .maxSpeed = 70}, false); 
@@ -55,33 +59,129 @@ void elimGoalRushAuton()
     chassis.setPose(0, 0, 0);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
+
+    IntakeStageOne.move_voltage(-12000); 
     chassis.moveToPoint(0 * autonSideDetected, 38, 
-                        4000, {.forwards = true, .maxSpeed = 127}, false);
-    doinker.set_value(1);
-    pros::delay(50);
-    chassis.moveToPoint(0 * autonSideDetected, 0, 
-                        4000, {.forwards = false, .maxSpeed = 90}, false);
-    doinker.set_value(0);
+                        2500, {.forwards = true, .maxSpeed = 127}, false);
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        leftDoinker.set_value(1); }
+    else {
+        rightDoinker.set_value(1); 
+    }
+    pros::delay(200);
+    chassis.moveToPoint(5 * autonSideDetected, 10, 
+                        2000, {.forwards = false, .maxSpeed = 90}, false);
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        leftDoinker.set_value(0); }
+    else {
+        rightDoinker.set_value(0); 
+    }
     pros::delay(200);
     if(autonSideDetected == RED_SIDE_AUTON) {
-        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
+        chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
     } else {
-        chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE}, false);
+        chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
     }
     chassis.cancelAllMotions();
-    chassis.moveToPoint(-4 * autonSideDetected, 25, 
-                        4000, {.forwards = false, .maxSpeed = 30}, false);
-    chassis.cancelAllMotions();
+    chassis.moveToPoint(-5 * autonSideDetected, 25, 
+                        4000, {.forwards = false, .maxSpeed = 40}, false);
+    chassis.cancelAllMotions(); 
 
-    backClampPnuematic.set_value(1);
-    pros::delay(250);
-    hookState = HOOK_UP;
+    pros::delay(50);
+    backClampPnuematic.set_value(1); 
     pros::delay(100);
-    chassis.moveToPoint(0 * autonSideDetected, 0, 
-                        4000, {.forwards = true, .maxSpeed = 90}, false);
+
+    // Did we win the Goal Rush and clamp the goal?
+    if(goalDetector.get_value()) {
+        masterController.print(3, 0, "Goal Rush Won");
+        // We won the goal rush
+        hookState = HOOK_UP_AUTON;
+        pros::delay(2500);
+
+        chassis.moveToPoint(16 * autonSideDetected, 2, 
+                            4000, {.forwards = true, .maxSpeed = 90}, false);
+    } else {
+        // We lost the goal rush
+        masterController.print(3, 0, "Goal Rush Lost");
+ 
+        // Line up to get the alliance MoGo
+        chassis.moveToPoint(6 * autonSideDetected, 6, 
+                            4000, {.forwards = true, .maxSpeed = 80}, false);
+        // Line up to get the alliance MoGo
+        chassis.moveToPoint(-13 * autonSideDetected, 23, 
+                            4000, {.forwards = false, .maxSpeed = 50}, false);
+        backClampPnuematic.set_value(1); 
+        pros::delay(100);
+        // Get 2 rings on
+        hookState = HOOK_UP;
+        // Try to get the bottom alliance ring from corner
+        chassis.moveToPoint(28 * autonSideDetected, -5, 
+                            4000, {.forwards = true, .maxSpeed = 80}, false);
+
+        pros::delay(100);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 80}, false);
+        /* There's not enough time to get 2 corner rings and get in position
+        // Try to get the (2nd) other alliance ring from corner and hope color sort works
+        chassis.moveToPoint(28 * autonSideDetected, -5, 
+                            4000, {.forwards = true, .maxSpeed = 50}, false);
+        pros::delay(100);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 80}, false);
+        // Try to get the 3rd (alliance) ring from corner
+        chassis.moveToPoint(28 * autonSideDetected, -5, 
+                            4000, {.forwards = true, .maxSpeed = 80}, false);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 50}, false);
+        */
+
+        // Get ready to place goal in corner
+        if(autonSideDetected == RED_SIDE_AUTON) {
+            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
+        } else {
+            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
+        }
+        backClampPnuematic.set_value(1); 
+        pros::delay(100);
+        IntakeStageOne.move_voltage(0);
+        hookState = HOOK_STOPPED;
+        // For Elims, position right on the line to rush them or defend
+        chassis.moveToPoint(10 * autonSideDetected, 32, 
+                            2000, {.forwards = true, .maxSpeed = 127}, false);
+        if(autonSideDetected == RED_SIDE_AUTON) {
+            chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
+        } else {
+            chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
+        }
+    }
+    return;
+
+    chassis.cancelAllMotions(); 
+    chassis.moveToPoint(36 * autonSideDetected, 4, 
+                        2000, {.forwards = true, .maxSpeed = 40}, false);
+    chassis.cancelAllMotions();
+    chassis.moveToPoint(22 * autonSideDetected, 6, 
+                        2000, {.forwards = false, .maxSpeed = 40}, false);
+    chassis.cancelAllMotions();
+    chassis.moveToPoint(36 * autonSideDetected, 4, 
+                        2000, {.forwards = true, .maxSpeed = 40}, false);
+    chassis.cancelAllMotions();
+    chassis.moveToPoint(22 * autonSideDetected, 6, 
+                        2000, {.forwards = false, .maxSpeed = 40}, false);
+    chassis.cancelAllMotions();
+    chassis.moveToPoint(36 * autonSideDetected, 4, 
+                        2000, {.forwards = true, .maxSpeed = 40}, false);
     chassis.cancelAllMotions();
 
-    hookState = HOOK_STOPPPED;
+    chassis.moveToPoint(22 * autonSideDetected, 8, 
+                        4000, {.forwards = false, .maxSpeed = 60}, false);
+    chassis.cancelAllMotions();
+
+    chassis.turnToHeading((chassis.getPose().theta) + 180, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
+
+    backClampPnuematic.set_value(0); 
+
+    /*hookState = HOOK_STOPPPED; 
 
     // Get ready to place goal rush in corner
     if(autonSideDetected == RED_SIDE_AUTON) {
@@ -110,7 +210,7 @@ void elimGoalRushAuton()
     pros::delay(500);
     chassis.turnToHeading(45 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO}, false);
     IntakeStageOne.move_velocity(0);
-    hookState = HOOK_STOPPPED;
+    hookState = HOOK_STOPPPED; */
 }
 
 void simpleAuton()
@@ -215,7 +315,7 @@ void twoGoalSideFill() //elims goal rush
     IntakeStageOne.move_velocity(0);
     hookState = HOOK_UP;
     pros::delay(800);
-    hookState = HOOK_STOPPPED;
+    hookState = HOOK_STOPPED;
 
     backClampPnuematic.set_value(0); 
     IntakeStageOne.move_velocity(127);  
@@ -255,11 +355,11 @@ void simpleSingleMogo() {
     chassis.waitUntil(22);
     backClampPnuematic.set_value(1);
     pros::delay(500);
-    hookState = HOOK_UP;
+    hookState = HOOK_UP_AUTON;
     pros::delay(100);
     chassis.turnToHeading(180 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO});
     chassis.moveToPoint(0 * autonSideDetected, -45, 4000 ,{.forwards = true, .maxSpeed = 50}, false);
-    hookState = HOOK_STOPPPED;
+    hookState = HOOK_STOPPED;
 }
 
 void intakeStallDetection() {
