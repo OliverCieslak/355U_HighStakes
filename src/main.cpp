@@ -40,7 +40,7 @@ pros::Imu imu(19);
 
 pros::Motor LadyBrownMotor(3);
 // TODO - Figure out these target values
-int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, -1200, -1750, -2500, -3000}; //  TODO - Tune these
+int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1750, -2500, -3000};  // Took out vertical position for now.
 LadyBrownState ladyBrownState = RESTING;
 bool colorSortEnabled = false;
 int Stage_One_Intake = 11;

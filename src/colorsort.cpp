@@ -57,6 +57,7 @@ void hookColorSort()
 {
     prevColorState = currentColorState;
     currentColorState = getRingDetectorState();
+    static int ringsSorted = 0;
     int firstColorDistance = (int)firstRingColorSensor.get_proximity();
     int secondColorDistance = (int)secondRingColorSensor.get_proximity();
     static int time_to_flick = -1;
@@ -67,98 +68,46 @@ void hookColorSort()
         firstRingColorSensor.set_led_pwm(0);
         secondRingColorSensor.set_led_pwm(0);
     }
+    int hookUpVoltage = 12000;
+    if (hookState == HOOK_UP_AUTON) {
+        hookUpVoltage = .75 * 12000;
+    }
     if (hookState == HOOK_STOPPED) {
         IntakeStageTwo.move_voltage(0);
     } else if (hookState == HOOK_DOWN) {
         IntakeStageTwo.move_voltage(-12000);
-    } else if (hookState == HOOK_UP) {
+    } else if ((hookState == HOOK_UP) || (hookState == HOOK_UP_AUTON)) {
         if(!colorSortEnabled) {
-            IntakeStageTwo.move_voltage(12000);
-        } 
-        else {
+            IntakeStageTwo.move_voltage(hookUpVoltage);
+        } else {
             if(autonSideDetected == RED_SIDE_AUTON)
             {
                 if(currentColorState == BLUE_RING_DETECTED)
                 {
-                    printf("Blue ring detected\n");
-                    if(secondColorDistance < 100) 
-                    {
-                        time_to_flick = pros::millis() + 10;
-                    } else if(firstColorDistance < 100) 
-                    {
-                        time_to_flick = pros::millis();
+                    printf("Blue ring detected %d\n", ringsSorted++);
+                    if(secondColorDistance < 100 || firstColorDistance < 100) {
+                        IntakeStageTwo.move_voltage(-6000);
                     } else {
-                        time_to_flick = -1;
+                        IntakeStageTwo.move_voltage(hookUpVoltage);
                     }
+                } else {
+                    IntakeStageTwo.move_voltage(hookUpVoltage);
                 }
-                else
-                {
-                    time_to_flick = -1;
-                }
-            }
-            else 
-            {
-                if(currentColorState == RED_RING_DETECTED)
-                {
-                    printf("Red ring detected\n");
-                    if(secondColorDistance < 100) 
-                    {
-                        time_to_flick = pros::millis() + 5;
-                    } else if(firstColorDistance < 100) 
-                    {
-                        time_to_flick = pros::millis();
-                    } else {
-                        time_to_flick = -1;
-                    }
-                }
-                else
-                {
-                    time_to_flick = -1;
-                }
-            }
-
-            if(time_to_flick > 0 && pros::millis() >= time_to_flick) {
-                IntakeStageTwo.move_voltage(-1000);
-                time_to_flick = -1;
             } else {
-                IntakeStageTwo.move_voltage(12000);
-            }
-
-        }
-    }
-    else if (hookState == HOOK_UP_AUTON)
-    {
-        if(!colorSortEnabled) 
-        {
-            IntakeStageTwo.move_voltage(9000);
-        } 
-        else 
-        {
-            if(autonSideDetected == RED_SIDE_AUTON)
-            {
-                if(currentColorState == BLUE_RING_DETECTED)
-                {
-                    printf("Blue ring detected\n");
-                    IntakeStageTwo.move_voltage(-1000);
-                }
-                else
-                {
-                    IntakeStageTwo.move_voltage(12000);
-                }
-            }
-            else 
-            {
                 if(currentColorState == RED_RING_DETECTED)
                 {
-                    printf("Red ring detected\n");
-                    IntakeStageTwo.move_voltage(-1000);
+                    printf("Red ring detected %d\n", ringsSorted++);
+                    if(secondColorDistance < 100 || firstColorDistance < 100) {
+                        IntakeStageTwo.move_voltage(-6000);
+                    } else {
+                        IntakeStageTwo.move_voltage(hookUpVoltage);
+                    }
                 }
                 else
                 {
-                    IntakeStageTwo.move_voltage(12000);
+                    IntakeStageTwo.move_voltage(hookUpVoltage);
                 }
             }
-
         }
     }
 }

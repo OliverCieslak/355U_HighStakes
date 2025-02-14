@@ -54,6 +54,7 @@ void qualsGoalRushAutonTweaked()
 
 void elimGoalRushAuton()
 {   
+    colorSortEnabled = true;
     // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
@@ -95,14 +96,62 @@ void elimGoalRushAuton()
     if(goalDetector.get_value()) {
         masterController.print(3, 0, "Goal Rush Won");
         // We won the goal rush
-        hookState = HOOK_UP_AUTON;
-        pros::delay(2500);
+        hookState = HOOK_UP;
+        pros::delay(200);
 
-        chassis.moveToPoint(16 * autonSideDetected, 2, 
-                            4000, {.forwards = true, .maxSpeed = 90}, false);
+        chassis.moveToPoint(16 * autonSideDetected, 10, 
+                            2000, {.forwards = true, .maxSpeed = 90}, false);
+        // Try to get the bottom alliance ring from corner
+        chassis.moveToPoint(28 * autonSideDetected, -8, 
+                            1000, {.forwards = true, .maxSpeed = 60}, false);
+        pros::delay(100);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 60}, false);
+        // TODO - If we have time, we could try to get the 2nd alliance ring from corner
+        chassis.moveToPoint(28 * autonSideDetected, -8, 
+                            1000, {.forwards = true, .maxSpeed = 60}, false);
+        pros::delay(100);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 60}, false);
+        chassis.moveToPoint(28 * autonSideDetected, -8, 
+                            1000, {.forwards = true, .maxSpeed = 60}, false);
+        pros::delay(100);
+        chassis.moveToPoint(23 * autonSideDetected, 0, 
+                            1000, {.forwards = false, .maxSpeed = 60}, false);
+
+        // Get ready to place goal in corner
+        if(autonSideDetected == RED_SIDE_AUTON) {
+            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
+        } else {
+            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
+        }
+        hookState = HOOK_STOPPED;
+        backClampPnuematic.set_value(0); 
+        pros::delay(100);
+
+        chassis.moveToPoint(16 * autonSideDetected, 6, 
+                            1000, {.forwards = false, .maxSpeed = 70}, false);
+        // Line up to get the alliance MoGo
+        chassis.turnToPoint(-13 * autonSideDetected, 18, 
+                            4000, {.forwards = false, .maxSpeed = 70}, false);
+        chassis.moveToPoint(-13 * autonSideDetected, 18, 
+                            4000, {.forwards = false, .maxSpeed = 50}, false);
+        backClampPnuematic.set_value(1);
+        pros::delay(100);
+
+        // If we miss the 2nd MoGo, stay near it.
+        if(goalDetector.get_value()) {
+            // We might have a ring to score on this Mogo
+            hookState = HOOK_UP;
+            // Get ready to rush the other side
+            chassis.moveToPoint(0 * autonSideDetected, 32, 
+                                2000, {.forwards = true, .maxSpeed = 90}, false);
+            pros::delay(500);
+        }
     } else {
         // We lost the goal rush
         masterController.print(3, 0, "Goal Rush Lost");
+        backClampPnuematic.set_value(0); 
  
         // Line up to get the alliance MoGo
         chassis.moveToPoint(6 * autonSideDetected, 6, 
@@ -116,7 +165,7 @@ void elimGoalRushAuton()
         hookState = HOOK_UP;
         // Try to get the bottom alliance ring from corner
         chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            4000, {.forwards = true, .maxSpeed = 80}, false);
+                            2000, {.forwards = true, .maxSpeed = 60}, false);
 
         pros::delay(100);
         chassis.moveToPoint(23 * autonSideDetected, 0, 
@@ -124,13 +173,13 @@ void elimGoalRushAuton()
         /* There's not enough time to get 2 corner rings and get in position
         // Try to get the (2nd) other alliance ring from corner and hope color sort works
         chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            4000, {.forwards = true, .maxSpeed = 50}, false);
+                            1000, {.forwards = true, .maxSpeed = 50}, false);
         pros::delay(100);
         chassis.moveToPoint(23 * autonSideDetected, 0, 
                             1000, {.forwards = false, .maxSpeed = 80}, false);
         // Try to get the 3rd (alliance) ring from corner
         chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            4000, {.forwards = true, .maxSpeed = 80}, false);
+                            1000, {.forwards = true, .maxSpeed = 80}, false);
         chassis.moveToPoint(23 * autonSideDetected, 0, 
                             1000, {.forwards = false, .maxSpeed = 50}, false);
         */
@@ -141,76 +190,16 @@ void elimGoalRushAuton()
         } else {
             chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
         }
-        backClampPnuematic.set_value(1); 
+        backClampPnuematic.set_value(0); 
         pros::delay(100);
         IntakeStageOne.move_voltage(0);
         hookState = HOOK_STOPPED;
-        // For Elims, position right on the line to rush them or defend
-        chassis.moveToPoint(10 * autonSideDetected, 32, 
-                            2000, {.forwards = true, .maxSpeed = 127}, false);
-        if(autonSideDetected == RED_SIDE_AUTON) {
-            chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
-        } else {
-            chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
-        }
+        // For Elims, position right on the line to rush them or defend.  For qual version, change this to hit the ladder
+        chassis.turnToPoint(10 * autonSideDetected, 37, 
+                            2000, {.forwards = false, .maxSpeed = 70}, false);
+        chassis.moveToPoint(10 * autonSideDetected, 37, 
+                            2000, {.forwards = false, .maxSpeed = 90}, false);
     }
-    return;
-
-    chassis.cancelAllMotions(); 
-    chassis.moveToPoint(36 * autonSideDetected, 4, 
-                        2000, {.forwards = true, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions();
-    chassis.moveToPoint(22 * autonSideDetected, 6, 
-                        2000, {.forwards = false, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions();
-    chassis.moveToPoint(36 * autonSideDetected, 4, 
-                        2000, {.forwards = true, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions();
-    chassis.moveToPoint(22 * autonSideDetected, 6, 
-                        2000, {.forwards = false, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions();
-    chassis.moveToPoint(36 * autonSideDetected, 4, 
-                        2000, {.forwards = true, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions();
-
-    chassis.moveToPoint(22 * autonSideDetected, 8, 
-                        4000, {.forwards = false, .maxSpeed = 60}, false);
-    chassis.cancelAllMotions();
-
-    chassis.turnToHeading((chassis.getPose().theta) + 180, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
-
-    backClampPnuematic.set_value(0); 
-
-    /*hookState = HOOK_STOPPPED; 
-
-    // Get ready to place goal rush in corner
-    if(autonSideDetected == RED_SIDE_AUTON) {
-        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE}, false);
-    } else {
-        chassis.turnToHeading(0 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE}, false);
-    }
-    chassis.cancelAllMotions();
-    pros::delay(200);
-    backClampPnuematic.set_value(0);
-    
-    // Get ready to get ring
-    IntakeStageOne.move_velocity(-127);
-
-    chassis.moveToPoint(-12 * autonSideDetected, 24, 
-                        4000, {.forwards = true, .maxSpeed = 40}, false);
-    
-    // Now we have the ring and need to get the MoGo
-    chassis.turnToHeading(95 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO}, false);
-    chassis.moveToPoint(-32 * autonSideDetected, 32, 
-                        4000, {.forwards = false, .maxSpeed = 40}, false);
-
-    backClampPnuematic.set_value(1);
-    pros::delay(250);
-    hookState = HOOK_UP;
-    pros::delay(500);
-    chassis.turnToHeading(45 * autonSideDetected, 1000, {.direction = lemlib::AngularDirection::AUTO}, false);
-    IntakeStageOne.move_velocity(0);
-    hookState = HOOK_STOPPPED; */
 }
 
 void simpleAuton()
