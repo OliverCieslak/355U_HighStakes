@@ -1,5 +1,6 @@
 #include "autons.h"
 #include "globals.h"
+#import "ladybrown.hpp"
 
 int MIN_INTAKE_TIME = 500;
 int POST_INTAKE_DELAY = 500;
@@ -202,11 +203,78 @@ void elimGoalRushAuton()
     }
 }
 
+void baseNegSide()
+{
+    colorSortEnabled = true;
+    chassis.setPose(-60 * autonSideDetected, 15, 225);
+    chassis.cancelAllMotions();
+    ladyBrownState = LadyBrownState::HORIZONTAL;  // Use lady brown to score alliance stake
+    pros::delay(500);
+    chassis.moveToPoint(-48 * autonSideDetected, 24, 1000 ,{.forwards = false, .maxSpeed = 50}, false); // Back up slightly
+    ladyBrownState = LadyBrownState::RESTING;  // Use lady brown to score alliance stake
+
+    // Get the MoGo
+    chassis.moveToPoint(-24 * autonSideDetected, 24, 2000 ,{.forwards = false, .maxSpeed = 60}, false);
+    backClampPnuematic.set_value(1);
+    pros::delay(100);
+    // Get ready to intake rings
+    IntakeStageOne.move_velocity(-127);
+    hookState = HOOK_UP;
+    chassis.turnToPoint(-10 * autonSideDetected, 38, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-10 * autonSideDetected, 38, 3000 ,{.forwards = true, .maxSpeed = 60, .earlyExitRange=3}, false);
+    // Smoothly move to the 2nd ring with the early exit
+    chassis.moveToPoint(-10 * autonSideDetected, 52, 2000 ,{.forwards = true, .maxSpeed = 60}, false);
+    // Smoothly move back to the 3rd ring in the stack with the early exit
+    chassis.turnToPoint(-24 * autonSideDetected, 48, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-24 * autonSideDetected, 48, 3000 ,{.forwards = true, .maxSpeed = 60}, false);
+
+    // 2 Stack between ladder and alliance stake
+    chassis.moveToPoint(-51 * autonSideDetected, -12, 5000 ,{.forwards = true, .maxSpeed = 60}, false);
+
+    // For Elim, head to positive corner.  For quals, head to the ladder
+    chassis.moveToPoint(-53 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
+}
+
+void qualNegSide()
+{ 
+    baseNegSide();
+    // For Elim, head to positive corner.  For quals, head to the ladder
+    chassis.turnToPoint(-24 * autonSideDetected, 0, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-24 * autonSideDetected, 0, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
+}
+
+void elimNegSide()
+{
+    baseNegSide();
+    // For Elim, head to positive corner.  For quals, head to the ladder
+    chassis.moveToPoint(-58 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
+}
+
+void qualRedNegSide() {
+    autonSideDetected = RED_SIDE_AUTON;
+    qualNegSide();
+}
+
+void elimRedNegSide() {
+    autonSideDetected = RED_SIDE_AUTON;
+    elimNegSide();
+}
+
+void qualBlueNegSide() {
+    autonSideDetected = BLUE_SIDE_AUTON;
+    qualNegSide();
+}
+
+void elimBlueNegSide() {
+    autonSideDetected = BLUE_SIDE_AUTON;
+    elimNegSide();
+}
+
 void simpleAuton()
 { 
     chassis.setPose(0, 0, 0);
     chassis.cancelAllMotions();
-    chassis.moveToPoint(0 * autonSideDetected, 50, 4000 ,{.forwards = true, .maxSpeed = 80}, true);
+    chassis.moveToPoint(0 * autonSideDetected, 50, 4000 ,{.forwards = true, .maxSpeed = 80}, false);
 }
 
 void linearPidMovementTest()

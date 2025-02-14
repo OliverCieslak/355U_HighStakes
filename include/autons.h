@@ -9,6 +9,10 @@
 #define SINGLE_MOGO "Single MoGo"
 #define QUAL_GOAL_RUSH "Qual Goal Rush"
 #define ELIM_GOAL_RUSH "Elim Goal Rush"
+#define QUAL_R_NEG_SIDE "Qual R Neg Side"
+#define ELIM_R_NEG_SIDE "Elim R Neg Side"
+#define QUAL_B_NEG_SIDE "Qual B Neg Side"
+#define ELIM_B_NEG_SIDE "Elim B Neg Side"
 #define GOAL_FILL "Goal Fill"
 #define TWO_GOAL_SIDE_FILL "Two Goal Side Fill"
 #define AUTON_ONE "Auton 1"
@@ -21,6 +25,13 @@
 void qualsGoalRushAutonTweaked();
 void elimGoalRushAuton();
 void simpleAuton();
+void baseNegSide();
+void qualNegSide();
+void elimNegSide();
+void qualRedNegSide();
+void elimRedNegSide();
+void qualBlueNegSide();
+void elimBlueNegSide();
 
 void linearPidMovementTest();
 void turnPidMovementTest();

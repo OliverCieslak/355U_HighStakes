@@ -7,16 +7,20 @@
 #include "particle.hpp"
 
 rd::Selector selector({
-                        {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
                         {ELIM_GOAL_RUSH, &elimGoalRushAuton},
-                        {SAFE_SKILLS, &safeSkills},
+                        {QUAL_R_NEG_SIDE, &qualRedNegSide},
+                        {QUAL_B_NEG_SIDE, &qualBlueNegSide},
+                        {ELIM_R_NEG_SIDE, &elimRedNegSide},
+                        {ELIM_B_NEG_SIDE, &elimBlueNegSide},
                         {PF_SKILLS, &pfSkills},
-                        {SCORING_SKILLS, &scoringSkills},
                         {SINGLE_MOGO, &simpleSingleMogo},
+                        {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
+                        {SAFE_SKILLS, &safeSkills},
                         {SIMPLE_ALLIANCE, &simpleAllianceStake},
                         {GOAL_FILL, &goalFill},
                         {TWO_GOAL_SIDE_FILL, &twoGoalSideFill},
                         {AUTON_ONE, &simpleAuton},
+                        {SCORING_SKILLS, &scoringSkills},
                         {LINEAR_PID_MOVEMENT, &linearPidMovementTest},
                         {TURN_PID_MOVEMENT, &turnPidMovementTest}, 
                        });
