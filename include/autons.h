@@ -13,6 +13,8 @@
 #define ELIM_R_NEG_SIDE "Elim R Neg Side"
 #define QUAL_B_NEG_SIDE "Qual B Neg Side"
 #define ELIM_B_NEG_SIDE "Elim B Neg Side"
+#define POS_SIDE_WALL_STAKE "Pos Wall Stake"
+#define NEG_SIDE_RING_RUSH "Neg Ring Rush"
 #define GOAL_FILL "Goal Fill"
 #define TWO_GOAL_SIDE_FILL "Two Goal Side Fill"
 #define AUTON_ONE "Auton 1"
@@ -32,6 +34,9 @@ void qualRedNegSide();
 void elimRedNegSide();
 void qualBlueNegSide();
 void elimBlueNegSide();
+
+void positiveSideWallStakeAuton();
+void negRingRushAuton();
 
 void linearPidMovementTest();
 void turnPidMovementTest();

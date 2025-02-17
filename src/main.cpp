@@ -8,10 +8,12 @@
 
 rd::Selector selector({
                         {ELIM_GOAL_RUSH, &elimGoalRushAuton},
+                        {POS_SIDE_WALL_STAKE, &positiveSideWallStakeAuton},
                         {QUAL_R_NEG_SIDE, &qualRedNegSide},
                         {QUAL_B_NEG_SIDE, &qualBlueNegSide},
                         {ELIM_R_NEG_SIDE, &elimRedNegSide},
                         {ELIM_B_NEG_SIDE, &elimBlueNegSide},
+                        {NEG_SIDE_RING_RUSH, &negRingRushAuton},
                         {PF_SKILLS, &pfSkills},
                         {SINGLE_MOGO, &simpleSingleMogo},
                         {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
@@ -43,9 +45,11 @@ HookState hookState = HOOK_STOPPED;
 pros::Imu imu(19);
 
 pros::Motor LadyBrownMotor(3);
-// TODO - Figure out these target values
-int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1750, -2500, -3000};  // Took out vertical position for now.
+
+int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -2500, -3000};     // Took out vertical position for now.
+// int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -1650, -1650,};  // Took out vertical position for now.
 LadyBrownState ladyBrownState = RESTING;
+int ladyBrownPidEnabled = 1;
 bool colorSortEnabled = false;
 int Stage_One_Intake = 11;
 int Stage_Two_Intake = 1;
@@ -55,6 +59,10 @@ pros::adi::DigitalOut backClampPnuematic('H');
 pros::adi::DigitalOut leftDoinker('A');
 pros::adi::DigitalOut rightDoinker('G');
 pros::adi::DigitalIn goalDetector('C');
+
+int MIN_INTAKE_TIME = 500;
+int POST_INTAKE_DELAY = 500;
+int MAX_INTAKE_TIME = 3000;
 
 lemlib::Drivetrain drivetrain(&leftMotors,  // left motor group
                               &rightMotors, // right motor group
@@ -176,14 +184,14 @@ void initialize()
    LadyBrownMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
    LadyBrownMotor.tare_position();
 
-
     pros::Task myAsyncControlTask([]{
       uint32_t lastTimeRun = pros::millis();
-        while (true) {
-            ladyBrownControl();
-            hookColorSort();
-            pros::c::task_delay_until(&lastTimeRun, 10);
-        }
+      while (true)
+      {
+         ladyBrownControl();
+         hookColorSort();
+         pros::c::task_delay_until(&lastTimeRun, 10);
+      }
     });
 
    console.println("Initializing robot...Done!");

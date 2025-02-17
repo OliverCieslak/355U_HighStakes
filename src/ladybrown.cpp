@@ -17,9 +17,19 @@ void prevLadyBrownState()
 }
 
 void ladyBrownControl() {
-    double kp = 20; // TODO - Tune this with the rotation sensor when ready
-    // TODO - Switch this to rotation sensor
-    double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
-    double v = kp * error;
-    LadyBrownMotor.move_voltage(v);
+    if(ladyBrownPidEnabled) {
+        double kp = 20; // TODO - Tune this with the rotation sensor when ready
+        // TODO - Switch this to rotation sensor
+        double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
+        double v = kp * error;
+        LadyBrownMotor.move_voltage(v);
+    }
+}
+
+void resetLadyBrown() {
+    ladyBrownPidEnabled = 0;
+    LadyBrownMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+    pros::delay(100);
+    LadyBrownMotor.tare_position();
+    ladyBrownPidEnabled = 1;
 }
