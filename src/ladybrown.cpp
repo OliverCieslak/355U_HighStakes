@@ -3,7 +3,8 @@
 void nextLadyBrownState()
 {
     int nextState = static_cast<int>(ladyBrownState) + 1;
-    if (nextState < LadyBrownState::NUM_STATES) {
+    if (nextState < LadyBrownState::NUM_STATES)
+    {
         ladyBrownState = static_cast<LadyBrownState>(nextState);
     }
 }
@@ -11,25 +12,25 @@ void nextLadyBrownState()
 void prevLadyBrownState()
 {
     int prevState = static_cast<int>(ladyBrownState) - 1;
-    if (prevState >= 0) {
+    if (prevState >= 0)
+    {
         ladyBrownState = static_cast<LadyBrownState>(prevState);
     }
 }
 
-void ladyBrownControl() {
-    if(ladyBrownPidEnabled) {
-        double kp = 20; // TODO - Tune this with the rotation sensor when ready
-        // TODO - Switch this to rotation sensor
-        double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
-        double v = kp * error;
-        LadyBrownMotor.move_voltage(v);
-    }
-}
+void ladyBrownControl()
+{
+    //double kp = -1.2;
+    double kp = 20;
+    double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
+    double v = kp * error;
 
-void resetLadyBrown() {
-    ladyBrownPidEnabled = 0;
-    LadyBrownMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-    pros::delay(100);
-    LadyBrownMotor.tare_position();
-    ladyBrownPidEnabled = 1;
+    // State transition check
+    static LadyBrownState previousState = ladyBrownState;
+    if (previousState == LadyBrownState::LOADING && ladyBrownState == LadyBrownState::SCORING) {
+        IntakeStageTwo.move_relative(-50, 200); // Move backward a little
+    }
+    previousState = ladyBrownState;
+
+    LadyBrownMotor.move_voltage(v);
 }

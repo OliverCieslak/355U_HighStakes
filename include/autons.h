@@ -20,6 +20,7 @@
 #define AUTON_ONE "Auton 1"
 #define SAFE_SKILLS "Skills Safe"
 #define PF_SKILLS "PF Skills"
+#define PF_LB_SKILLS "PF LB Skills"
 #define SCORING_SKILLS "Skills Rings"
 #define LINEAR_PID_MOVEMENT "Linear PID Movement"
 #define TURN_PID_MOVEMENT "Turn PID Movement"
@@ -50,6 +51,7 @@ void simpleSingleMogo();
 void safeSkills();
 void scoringSkills();
 void pfSkills();
+void pfLadyBrownSkills();
 
 void intakeStallDetection();
 void stopLemLibTrackingTask();

@@ -14,10 +14,11 @@ rd::Selector selector({
                         {ELIM_R_NEG_SIDE, &elimRedNegSide},
                         {ELIM_B_NEG_SIDE, &elimBlueNegSide},
                         {NEG_SIDE_RING_RUSH, &negRingRushAuton},
+                        {PF_LB_SKILLS, &pfLadyBrownSkills},
                         {PF_SKILLS, &pfSkills},
+                        {SAFE_SKILLS, &safeSkills},
                         {SINGLE_MOGO, &simpleSingleMogo},
                         {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
-                        {SAFE_SKILLS, &safeSkills},
                         {SIMPLE_ALLIANCE, &simpleAllianceStake},
                         {GOAL_FILL, &goalFill},
                         {TWO_GOAL_SIDE_FILL, &twoGoalSideFill},
@@ -46,10 +47,11 @@ pros::Imu imu(19);
 
 pros::Motor LadyBrownMotor(3);
 
-int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -2500, -3000};     // Took out vertical position for now.
+//int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {-14700, -19000, -6000, 0};     // Using Rotation sensor now
+int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -480, -1450, -2200 /*, -3000 */};     // Took out vertical position for now.
+//int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -2500, -3000};     // Took out vertical position for now.
 // int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -1650, -1650,};  // Took out vertical position for now.
 LadyBrownState ladyBrownState = RESTING;
-int ladyBrownPidEnabled = 1;
 bool colorSortEnabled = false;
 int Stage_One_Intake = 11;
 int Stage_Two_Intake = 1;
@@ -149,7 +151,8 @@ int autonSideDetected = RED_SIDE_AUTON;
 pros::Distance backDistanceSensor(18);
 pros::Distance frontDistanceSensor(12);
 pros::Distance rightDistanceSensor(5);
-pros::Distance leftDistanceSensor(21);
+pros::Distance leftDistanceSensor(20);
+pros::Rotation lbRotationSensor(21);
 
 // TODO - Tune these values
 std::vector<ParticleFilter::SensorMount> sensorMounts = {
@@ -173,6 +176,9 @@ void initialize()
 {
    printf("Initializing robot...\n");
    console.println("Initializing robot...");
+   firstRingColorSensor.set_integration_time(10);
+   secondRingColorSensor.set_integration_time(10);
+
    chassis.setPose(0, 0, 0);
    chassis.cancelAllMotions();
    chassis.calibrate();
@@ -181,8 +187,15 @@ void initialize()
    IntakeStageTwo.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
    IntakeStageTwo.tare_position();
 
-   LadyBrownMotor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
    LadyBrownMotor.tare_position();
+   printf("lbRotationSensor: %d\n", lbRotationSensor.get_angle());
+   printf("LadyBrownMotor: %d\n", LadyBrownMotor.get_position());
+   /*
+   if(lbRotationSensor.get_angle() > 17800)
+   {
+      LadyBrownMotor.set_zero_position(ladyBrownStateTargets[LadyBrownState::LOADING]);
+   }
+   */
 
     pros::Task myAsyncControlTask([]{
       uint32_t lastTimeRun = pros::millis();
@@ -368,13 +381,6 @@ void autonomous()
 void opcontrol()
 {
    colorSortEnabled = false;
-   if(colorSortEnabled) {
-      firstRingColorSensor.set_led_pwm(100);
-      secondRingColorSensor.set_led_pwm(100);
-   } else {
-      firstRingColorSensor.set_led_pwm(0);
-      secondRingColorSensor.set_led_pwm(0); 
-   }
    static int backClampState = 0;
    static bool leftDoinkerState = false;
    static bool rightDoinkerState = false;
@@ -460,10 +466,18 @@ void opcontrol()
 
       if (masterController.get_digital_new_press(DIGITAL_DOWN))
       {
-         nextLadyBrownState();
+         if(masterController.get_digital(DIGITAL_B)){
+            lbRotationSensor.set_position(0);
+         } else {
+            nextLadyBrownState();
+         }
       }
       if (masterController.get_digital_new_press(DIGITAL_B)){ 
-         prevLadyBrownState();
+         if(masterController.get_digital(DIGITAL_DOWN)){
+            lbRotationSensor.set_position(0);
+         } else {
+            prevLadyBrownState();
+         }
       }
 
       if (masterController.get_digital_new_press(DIGITAL_LEFT))
@@ -482,13 +496,7 @@ void opcontrol()
 
       if(masterController.get_digital_new_press(DIGITAL_X)) {
          colorSortEnabled = !colorSortEnabled;
-         if(colorSortEnabled) {
-            firstRingColorSensor.set_led_pwm(100);
-            secondRingColorSensor.set_led_pwm(100);
-         } else {
-            firstRingColorSensor.set_led_pwm(0);
-            secondRingColorSensor.set_led_pwm(0);
-         }
+         printf("Color sort enabled: %d\n", colorSortEnabled);
       }
       // delay to save resources
       pros::delay(20);

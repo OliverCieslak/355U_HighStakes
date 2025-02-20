@@ -1,4 +1,5 @@
 #include "colorsort.hpp"
+#include "ladybrown.hpp"
 
 // These are the actual definitions
 RingDetectorState prevColorState = NO_RING_DETECTED;
@@ -7,8 +8,8 @@ RingDetectorState currentColorState = NO_RING_DETECTED;
 // Function to cycle through the color states based on the current hue
 void getAutonColorState()
 {
-    firstRingColorSensor.set_led_pwm(25);
-    secondRingColorSensor.set_led_pwm(25);
+    firstRingColorSensor.set_led_pwm(100);
+    secondRingColorSensor.set_led_pwm(100);
     pros::delay(100); // Wait for the sensor to stabilize
     RingDetectorState ringDetectorState = getRingDetectorState();
     if (ringDetectorState == RingDetectorState::NO_RING_DETECTED)
@@ -68,44 +69,102 @@ void hookColorSort()
         firstRingColorSensor.set_led_pwm(0);
         secondRingColorSensor.set_led_pwm(0);
     }
+
+    // Stall detection parameters for IntakeStageTwo
+    const double STAGE2_STALL_CURRENT_THRESHOLD = 2300; // milliamps
+    const int STAGE2_STALL_TIME_THRESHOLD = 60; // milliseconds
+    static uint32_t stage2_stall_timer = 0;
+    static bool stage2_was_stalled = false;
+
     int hookUpVoltage = 12000;
     if (hookState == HOOK_UP_AUTON) {
         hookUpVoltage = .75 * 12000;
     }
     if (hookState == HOOK_STOPPED) {
         IntakeStageTwo.move_voltage(0);
+        stage2_stall_timer = 0;
+        stage2_was_stalled = false;
     } else if (hookState == HOOK_DOWN) {
         IntakeStageTwo.move_voltage(-12000);
+        stage2_stall_timer = 0;
+        stage2_was_stalled = false;
     } else if ((hookState == HOOK_UP) || (hookState == HOOK_UP_AUTON)) {
         if(!colorSortEnabled) {
-            IntakeStageTwo.move_voltage(hookUpVoltage);
+            double current = std::abs(IntakeStageTwo.get_current_draw());
+            if (current > STAGE2_STALL_CURRENT_THRESHOLD) {
+                if (stage2_stall_timer == 0) {
+                    stage2_stall_timer = pros::millis();
+                }
+                else if (pros::millis() - stage2_stall_timer > STAGE2_STALL_TIME_THRESHOLD) {
+                    // Pulse the motor by alternating between forward and backward voltage
+                    if (!stage2_was_stalled) {
+                        stage2_was_stalled = true;
+                        IntakeStageTwo.move_voltage(12000); // Initial forward pulse
+                    } else {
+                        // Alternate direction every 200ms
+                        if ((pros::millis() % 400) > 200) {
+                            IntakeStageTwo.move_voltage(12000); // Forward pulse
+                        } else {
+                            IntakeStageTwo.move_voltage(-6000); // Backward pulse
+                        }
+                    }
+                }
+            } else {
+                stage2_stall_timer = 0;
+                stage2_was_stalled = false;
+                IntakeStageTwo.move_voltage(12000);
+            }
+            
         } else {
-            if(autonSideDetected == RED_SIDE_AUTON)
-            {
-                if(currentColorState == BLUE_RING_DETECTED)
+            double current = std::abs(IntakeStageTwo.get_current_draw());
+            if (current > STAGE2_STALL_CURRENT_THRESHOLD) {
+                if (stage2_stall_timer == 0) {
+                    stage2_stall_timer = pros::millis();
+                }
+                else if (pros::millis() - stage2_stall_timer > STAGE2_STALL_TIME_THRESHOLD) {
+                    // Pulse the motor by alternating between forward and backward voltage
+                    if (!stage2_was_stalled) {
+                        stage2_was_stalled = true;
+                        IntakeStageTwo.move_voltage(12000); // Initial forward pulse
+                    } else {
+                        // Alternate direction every 200ms
+                        if ((pros::millis() % 400) > 200) {
+                            IntakeStageTwo.move_voltage(12000); // Forward pulse
+                        } else {
+                            IntakeStageTwo.move_voltage(-6000); // Backward pulse
+                        }
+                    }
+                }
+            } else {
+                stage2_stall_timer = 0;
+                stage2_was_stalled = false;
+                if (autonSideDetected == RED_SIDE_AUTON)
                 {
-                    printf("Blue ring detected %d\n", ringsSorted++);
-                    if(secondColorDistance < 100 || firstColorDistance < 100) {
-                        IntakeStageTwo.move_voltage(-6000);
+                    if(currentColorState == BLUE_RING_DETECTED)
+                    {
+                        printf("Blue ring detected %d\n", ringsSorted++);
+                        if(secondColorDistance < 100 || firstColorDistance < 100) {
+                            IntakeStageTwo.move_voltage(-6000);
+                        } else {
+                            IntakeStageTwo.move_voltage(hookUpVoltage);
+                        }
                     } else {
                         IntakeStageTwo.move_voltage(hookUpVoltage);
                     }
                 } else {
-                    IntakeStageTwo.move_voltage(hookUpVoltage);
-                }
-            } else {
-                if(currentColorState == RED_RING_DETECTED)
-                {
-                    printf("Red ring detected %d\n", ringsSorted++);
-                    if(secondColorDistance < 100 || firstColorDistance < 100) {
-                        IntakeStageTwo.move_voltage(-6000);
-                    } else {
+                    if(currentColorState == RED_RING_DETECTED)
+                    {
+                        printf("Red ring detected %d\n", ringsSorted++);
+                        if(secondColorDistance < 100 || firstColorDistance < 100) {
+                            IntakeStageTwo.move_voltage(-6000);
+                        } else {
+                            IntakeStageTwo.move_voltage(hookUpVoltage);
+                        }
+                    }
+                    else
+                    {
                         IntakeStageTwo.move_voltage(hookUpVoltage);
                     }
-                }
-                else
-                {
-                    IntakeStageTwo.move_voltage(hookUpVoltage);
                 }
             }
         }

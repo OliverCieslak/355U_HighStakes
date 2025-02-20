@@ -34,6 +34,7 @@ extern pros::Distance frontDistanceSensor;
 extern pros::Distance leftDistanceSensor;
 extern pros::Distance rightDistanceSensor;
 extern pros::adi::DigitalIn goalDetector;
+extern pros::Rotation lbRotationSensor;
 
 extern rd::Console console;
 extern int MIN_INTAKE_TIME;

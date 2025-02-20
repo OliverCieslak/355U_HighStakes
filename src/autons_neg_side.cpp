@@ -55,7 +55,7 @@ void baseNegSide()
     pros::delay(500);
     chassis.moveToPoint(-48 * autonSideDetected, 24, 1000 ,{.forwards = false, .maxSpeed = 50}, false); // Back up slightly
     ladyBrownState = LadyBrownState::RESTING;  // Use lady brown to score alliance stake
-
+    
     // Get the MoGo
     chassis.moveToPoint(-24 * autonSideDetected, 24, 2000 ,{.forwards = false, .maxSpeed = 60}, false);
     backClampPnuematic.set_value(1);
