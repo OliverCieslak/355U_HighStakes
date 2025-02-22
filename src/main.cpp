@@ -37,8 +37,8 @@ pros::Controller masterController(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup leftMotors({10, -9, -8},
                             pros::MotorGearset::blue);
 pros::MotorGroup rightMotors({14, -2, 4}, pros::MotorGearset::blue);
-pros::Optical firstRingColorSensor(6);
-pros::Optical secondRingColorSensor(7);
+pros::Optical sortingColorSensor(6);
+pros::Optical autonColorSensor(7);
 // Remove these lines since they're defined in colorsort.cpp
 // RingDetectorState prevColorState = NO_RING_DETECTED;
 // RingDetectorState currentColorState = NO_RING_DETECTED;
@@ -48,15 +48,16 @@ pros::Imu imu(19);
 pros::Motor LadyBrownMotor(3);
 
 //int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {-14700, -19000, -6000, 0};     // Using Rotation sensor now
-int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -480, -1450, -2200 /*, -3000 */};     // Took out vertical position for now.
+int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, 1000, -480, -1550/*, -2200, -3000*/ };     // Took out vertical position for now.
+int ladyBrownRotationStateTargets[LadyBrownState::NUM_STATES] = {0, 5250, 14800, 20700/*, 29600, 36300*/};     // Took out vertical position for now.
 //int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -2500, -3000};     // Took out vertical position for now.
 // int ladyBrownStateTargets[LadyBrownState::NUM_STATES] = {0, -425, /*-1200,*/ -1650, -1650, -1650,};  // Took out vertical position for now.
 LadyBrownState ladyBrownState = RESTING;
 bool colorSortEnabled = false;
 int Stage_One_Intake = 11;
 int Stage_Two_Intake = 1;
-pros::Motor IntakeStageOne(Stage_One_Intake);
-pros::Motor IntakeStageTwo(Stage_Two_Intake);
+pros::Motor IntakeStageOne(Stage_One_Intake); 
+pros::Motor IntakeStageTwo(Stage_Two_Intake); 
 pros::adi::DigitalOut backClampPnuematic('H');
 pros::adi::DigitalOut leftDoinker('A');
 pros::adi::DigitalOut rightDoinker('G');
@@ -176,8 +177,8 @@ void initialize()
 {
    printf("Initializing robot...\n");
    console.println("Initializing robot...");
-   firstRingColorSensor.set_integration_time(10);
-   secondRingColorSensor.set_integration_time(10);
+   sortingColorSensor.set_integration_time(10);
+   autonColorSensor.set_integration_time(10);
 
    chassis.setPose(0, 0, 0);
    chassis.cancelAllMotions();
@@ -188,14 +189,6 @@ void initialize()
    IntakeStageTwo.tare_position();
 
    LadyBrownMotor.tare_position();
-   printf("lbRotationSensor: %d\n", lbRotationSensor.get_angle());
-   printf("LadyBrownMotor: %d\n", LadyBrownMotor.get_position());
-   /*
-   if(lbRotationSensor.get_angle() > 17800)
-   {
-      LadyBrownMotor.set_zero_position(ladyBrownStateTargets[LadyBrownState::LOADING]);
-   }
-   */
 
     pros::Task myAsyncControlTask([]{
       uint32_t lastTimeRun = pros::millis();
@@ -398,6 +391,9 @@ void opcontrol()
    uint32_t stage2_stall_timer = 0;
    bool stage2_was_stalled = false;
 
+   uint32_t backClampTimer = 0;
+   bool goalDetectedAfterClamp = true;
+
    while (true)
    {
       // get left y and right x positions
@@ -456,28 +452,31 @@ void opcontrol()
          if (backClampState == 0)
          {
             backClampState = 1;
+            backClampTimer = pros::millis();
+            goalDetectedAfterClamp = true;
          }
          else
          {
             backClampState = 0;
+            backClampTimer = 0;
+            goalDetectedAfterClamp = true;
          }
          backClampPnuematic.set_value(backClampState);
       }
 
-      if (masterController.get_digital_new_press(DIGITAL_DOWN))
-      {
-         if(masterController.get_digital(DIGITAL_B)){
-            lbRotationSensor.set_position(0);
-         } else {
-            nextLadyBrownState();
+      if (backClampState == 1 && (pros::millis() - backClampTimer) > 150 && goalDetectedAfterClamp) {
+         if (!goalDetector.get_value()) {
+            masterController.rumble(".");
+            goalDetectedAfterClamp = false;
          }
       }
+
+      if (masterController.get_digital_new_press(DIGITAL_DOWN))
+      {
+         nextLadyBrownState();
+      }
       if (masterController.get_digital_new_press(DIGITAL_B)){ 
-         if(masterController.get_digital(DIGITAL_DOWN)){
-            lbRotationSensor.set_position(0);
-         } else {
-            prevLadyBrownState();
-         }
+         prevLadyBrownState();
       }
 
       if (masterController.get_digital_new_press(DIGITAL_LEFT))

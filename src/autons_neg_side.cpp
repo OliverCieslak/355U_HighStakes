@@ -8,7 +8,7 @@ void negRingRushAuton() {
     chassis.setPose(-48 * autonSideDetected, -48, 90 * autonSideDetected);
     lemlib::Pose start_pose = chassis.getPose();
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
-    chassis.cancelAllMotions();
+    chassis.cancelAllMotions(); 
 
     // Rush the rings, picking up a 2nd alliance ring on the way
     chassis.moveToPoint(-12 * autonSideDetected, -48, 2000 ,{.forwards = true, .maxSpeed = 127}, true);
@@ -52,7 +52,7 @@ void baseNegSide()
     chassis.setPose(-60 * autonSideDetected, 15, 225 * autonSideDetected);
     chassis.cancelAllMotions();
     ladyBrownState = LadyBrownState::HORIZONTAL;  // Use lady brown to score alliance stake
-    pros::delay(500);
+    pros::delay(550);
     chassis.moveToPoint(-48 * autonSideDetected, 24, 1000 ,{.forwards = false, .maxSpeed = 50}, false); // Back up slightly
     ladyBrownState = LadyBrownState::RESTING;  // Use lady brown to score alliance stake
     
@@ -66,31 +66,43 @@ void baseNegSide()
     chassis.turnToPoint(-10 * autonSideDetected, 38, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
     chassis.moveToPoint(-10 * autonSideDetected, 38, 3000 ,{.forwards = true, .maxSpeed = 60, .earlyExitRange=3}, false);
     // Smoothly move to the 2nd ring with the early exit
-    chassis.moveToPoint(-10 * autonSideDetected, 52, 2000 ,{.forwards = true, .maxSpeed = 60}, false);
+    chassis.moveToPoint(-10 * autonSideDetected, 55, 2000 ,{.forwards = true, .maxSpeed = 60}, false);
     // Smoothly move back to the 3rd ring in the stack with the early exit
     chassis.turnToPoint(-24 * autonSideDetected, 48, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
     chassis.moveToPoint(-24 * autonSideDetected, 48, 3000 ,{.forwards = true, .maxSpeed = 60}, false);
 
+    chassis.moveToPoint(-30 * autonSideDetected, 48, 1000 ,{.forwards = true, .maxSpeed = 100}, false);
+    chassis.turnToPoint(-52 * autonSideDetected, 55, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-52 * autonSideDetected, 55, 1000 ,{.forwards = true, .maxSpeed = 100}, false);
+    chassis.turnToPoint(-70 * autonSideDetected, 75, 1000 ,{.forwards = true, .maxSpeed = 60}, false);
+    chassis.moveToPoint(-70 * autonSideDetected, 75, 2000 ,{.forwards = true, .maxSpeed = 45}, false);
+    
+    /*chassis.moveToPoint(-50 * autonSideDetected, 50, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-60 * autonSideDetected, 60, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-50 * autonSideDetected, 50, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-60 * autonSideDetected, 60, 1000 ,{.forwards = true, .maxSpeed = 70}, false); */
+
     // 2 Stack between ladder and alliance stake
-    chassis.moveToPoint(-51 * autonSideDetected, -12, 5000 ,{.forwards = true, .maxSpeed = 60}, false);
+    //chassis.moveToPoint(-51 * autonSideDetected, -12, 5000 ,{.forwards = true, .maxSpeed = 60}, false);
 
     // For Elim, head to positive corner.  For quals, head to the ladder
-    chassis.moveToPoint(-53 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
+    //chassis.moveToPoint(-53 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
 }
 
 void qualNegSide()
 { 
     baseNegSide();
     // For Elim, head to positive corner.  For quals, head to the ladder
-    chassis.turnToPoint(-24 * autonSideDetected, 0, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-24 * autonSideDetected, 0, 2000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.turnToPoint(-35 * autonSideDetected, 0, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-35 * autonSideDetected, 0, 3000 ,{.forwards = true, .maxSpeed = 100}, false);
+    ladyBrownState = LadyBrownState::HORIZONTAL; 
 }
 
 void elimNegSide()
 {
     baseNegSide();
     // For Elim, head to positive corner.  For quals, head to the ladder
-    chassis.moveToPoint(-58 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
+   // chassis.moveToPoint(-58 * autonSideDetected, -52, 5000 ,{.forwards = true, .maxSpeed = 90}, false);
 }
 
 void qualRedNegSide() {

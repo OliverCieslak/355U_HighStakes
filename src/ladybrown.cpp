@@ -20,9 +20,10 @@ void prevLadyBrownState()
 
 void ladyBrownControl()
 {
-    //double kp = -1.2;
-    double kp = 20;
-    double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
+    double kp = -1.2;
+    double error = ladyBrownRotationStateTargets[static_cast<int>(ladyBrownState)] - lbRotationSensor.get_position();
+    //double kp = 20;
+    //double error = ladyBrownStateTargets[static_cast<int>(ladyBrownState)] - LadyBrownMotor.get_position();
     double v = kp * error;
 
     // State transition check

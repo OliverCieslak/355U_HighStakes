@@ -27,8 +27,8 @@ extern pros::Imu imu;
 extern pros::adi::DigitalOut backClampPnuematic;
 extern pros::adi::DigitalOut leftDoinker;
 extern pros::adi::DigitalOut rightDoinker;
-extern pros::Optical firstRingColorSensor;
-extern pros::Optical secondRingColorSensor;
+extern pros::Optical sortingColorSensor;
+extern pros::Optical autonColorSensor;
 extern pros::Distance backDistanceSensor;
 extern pros::Distance frontDistanceSensor;
 extern pros::Distance leftDistanceSensor;
@@ -42,6 +42,7 @@ extern int POST_INTAKE_DELAY;
 extern int MAX_INTAKE_TIME;
  
 extern int ladyBrownStateTargets[];
+extern int ladyBrownRotationStateTargets[];
 
 extern RingDetectorState prevColorState;
 extern RingDetectorState currentColorState;

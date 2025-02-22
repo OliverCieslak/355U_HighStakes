@@ -4,39 +4,60 @@
 
 void positiveSideWallStakeAuton()
 {
-    // Start facing the pos-side mogo
+    colorSortEnabled = true;
+    //colorSortEnabled = false;
+    // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
-    chassis.setPose(-48 * autonSideDetected, -24, -90 * autonSideDetected);
-    lemlib::Pose start_pose = chassis.getPose();
+    chassis.setPose(-52 * autonSideDetected, -36, -107 * autonSideDetected);
     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
 
     // Pick up pos-side mogo
-    chassis.moveToPoint(-24 * autonSideDetected, -24, 3000 ,{.forwards = false, .maxSpeed = 50}, false);
+    chassis.moveToPoint(-24 * autonSideDetected, -24, 3000 ,{.forwards = false, .maxSpeed = 60}, false);
     backClampPnuematic.set_value(1);
-    pros::delay(150);
+    pros::delay(250);
     // If we clamped the mogo, score the preload
+    IntakeStageOne.move_voltage(-12000);
+    hookState = HOOK_UP;
+    pros::delay(500);
+
     if(goalDetector.get_value()) {
-        hookState = HOOK_UP;
-        pros::delay(400);
+        // Get bottom alliance ring from corner
+        chassis.moveToPose(-64 * autonSideDetected, -64, 225 * autonSideDetected, 
+            2500, {.forwards = true, .maxSpeed = 60}, false);
+        pros::delay(250);
+        chassis.moveToPoint(-56 * autonSideDetected, -56, 
+            2000 ,{.forwards = false, .maxSpeed = 50}, false);
+        // Get 2nd (other color) ring from corner
+        chassis.moveToPoint(-64 * autonSideDetected, -64, 
+            2000 ,{.forwards = true, .maxSpeed = 60}, false);
+        chassis.moveToPoint(-56 * autonSideDetected, -56, 
+                2000 ,{.forwards = false, .maxSpeed = 50}, false);
+        // Get 3rd (our color) ring from corner
+        chassis.moveToPoint(-64 * autonSideDetected, -64, 
+            2000 ,{.forwards = true, .maxSpeed = 60}, false);
+        chassis.moveToPoint(-48 * autonSideDetected, -48,
+                            2000, {.forwards = false, .maxSpeed = 50}, false);
+        chassis.turnToPoint(-24 * autonSideDetected, -48, 
+            1000 ,{.forwards = true, .maxSpeed = 70}, false);
         hookState = HOOK_STOPPED;
     }
 
     // Prime the lady brown to hold a ring
+    hookState = HOOK_STOPPED;
     ladyBrownState = LadyBrownState::LOADING;
-    IntakeStageOne.move_velocity(-127);  // Get ready to intake the ring
     // Turn to Ring stack
     chassis.turnToPoint(-24 * autonSideDetected, -48, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-24 * autonSideDetected, -24, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(-24 * autonSideDetected, -48, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
 
     // Load ring to lady brown
     hookState = HOOK_UP;
-    pros::delay(400);
+    pros::delay(600);
     hookState = HOOK_STOPPED;
-
     // Turn to wall stake
-    chassis.turnToPoint(0 * autonSideDetected, -72, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-8 * autonSideDetected, -62, 2000 ,{.forwards = true, .maxSpeed = 50}, false);
+    chassis.turnToPoint(-10 * autonSideDetected, -62, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
     ladyBrownState = LadyBrownState::SCORING;
+    chassis.moveToPoint(-9 * autonSideDetected, -62, 3500 ,{.forwards = true, .maxSpeed = 50}, false);
+    IntakeStageOne.move_voltage(12000);  // Spit out other ring
     pros::delay(400);
 }
 
