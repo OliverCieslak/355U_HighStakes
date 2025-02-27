@@ -239,11 +239,11 @@
             "-funwind-tables",
             "--std=gnu++20",
             "-o",
-            "bin/pfskills.cpp.o",
-            "src\\pfskills.cpp"
+            "bin/ladybrown.cpp.o",
+            "src\\ladybrown.cpp"
         ],
         "directory": "C:\\Vex\\355U_HighStakes",
-        "file": "src\\pfskills.cpp"
+        "file": "src\\ladybrown.cpp"
     },
     {
         "arguments": [
@@ -280,10 +280,10 @@
             "-funwind-tables",
             "--std=gnu++20",
             "-o",
-            "bin/ladybrown.cpp.o",
-            "src\\ladybrown.cpp"
+            "bin/pfskills.cpp.o",
+            "src\\pfskills.cpp"
         ],
         "directory": "C:\\Vex\\355U_HighStakes",
-        "file": "src\\ladybrown.cpp"
+        "file": "src\\pfskills.cpp"
     }
 ]

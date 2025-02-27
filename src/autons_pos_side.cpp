@@ -358,7 +358,7 @@ void elimGoalRushAuton()
         chassis.moveToPoint(-24 * autonSideDetected, -24, 
             2500, {.forwards = false, .maxSpeed = 50}, false);
         backClampPnuematic.set_value(1); 
-        pros::delay(100);
+        pros::delay(150);
         if(goalDetector.get_value()) {
             hookState = HOOK_UP;
 
@@ -386,4 +386,104 @@ void elimGoalRushAuton()
         }
         // Stay here to pick up the missed mogo
     }
+}
+
+void qualGoalRushAuton()
+{   
+    colorSortEnabled = true;
+    // start with 2nd notch on seam farther from the wall
+    chassis.cancelAllMotions();
+    chassis.setPose(-52 * autonSideDetected, -36, 110 * autonSideDetected);
+    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE);
+
+    IntakeStageOne.move_voltage(-12000);
+    chassis.moveToPose(-18
+         * autonSideDetected, -54, 90 * autonSideDetected, 2000, {.forwards = true, .lead = .2, .maxSpeed = 127}, true);
+    chassis.waitUntil(34);
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        leftDoinker.set_value(1); }
+    else {
+        rightDoinker.set_value(1); 
+    }
+    chassis.waitUntilDone();
+    chassis.moveToPoint(-36 * autonSideDetected, -48, 
+                        2000, {.forwards = false, .maxSpeed = 90}, false);
+    if(autonSideDetected == RED_SIDE_AUTON) {
+        leftDoinker.set_value(0); }
+    else {
+        rightDoinker.set_value(0); 
+    }
+    pros::delay(100);
+    // Goal rush done, now try to grab the goal and score the rings
+    chassis.turnToPoint(0 * autonSideDetected, -48, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-20 * autonSideDetected, -48, 
+        2000, {.forwards = false, .maxSpeed = 50}, false);
+
+    backClampPnuematic.set_value(1); 
+    pros::delay(100);
+    
+    // Did we win the Goal Rush and clamp the goal?
+    if(goalDetector.get_value()) {
+        masterController.print(3, 0, "Goal Rush Won");
+        // We won the goal rush
+        hookState = HOOK_UP;
+        pros::delay(400);
+
+        // Reverse the intake to push the other ring away
+        IntakeStageOne.move_voltage(12000);
+
+        chassis.moveToPoint(-48 * autonSideDetected, -48, 
+                            2000, {.forwards = true, .maxSpeed = 90}, false);
+        // Face the corner
+        chassis.turnToPoint(-64 * autonSideDetected, -64, 
+                            1000, {.forwards = true, .maxSpeed = 70}, false);
+
+        // Get ready to intake
+        IntakeStageOne.move_voltage(-12000);
+        hookState = HOOK_STOPPED;
+        chassis.moveToPoint(-64 * autonSideDetected, -64, 
+                            1500, {.forwards = true, .maxSpeed = 50}, false);
+        pros::delay(250);
+        // Back away to place the MoGo
+        chassis.moveToPoint(-48 * autonSideDetected, -48, 
+        1500, {.forwards = false, .maxSpeed = 50}, false);
+    
+        // Get ready to drop and move on to alliance side mogo
+        chassis.turnToPoint(-24 * autonSideDetected, -48, 
+            1000, {.forwards = true, .maxSpeed = 70}, false);
+        // Drop the goal
+        backClampPnuematic.set_value(0);
+        pros::delay(100);
+
+        chassis.moveToPoint(-24 * autonSideDetected, -48, 
+            2000, {.forwards = true, .maxSpeed = 60}, false);
+
+        // Get ready to get the Alliance side mogo
+        chassis.turnToPoint(-24 * autonSideDetected, -24, 
+            1000, {.forwards = false, .maxSpeed = 70}, false);
+        chassis.moveToPoint(-24 * autonSideDetected, -24, 
+            2500, {.forwards = false, .maxSpeed = 50}, false);
+        backClampPnuematic.set_value(1); 
+        pros::delay(150);
+    } else {
+        // We lost the goal rush
+        masterController.print(3, 0, "Goal Rush Lost");
+        backClampPnuematic.set_value(0);
+        pros::delay(100);
+        // Get ready to get the Alliance side mogo
+        chassis.turnToPoint(-24 * autonSideDetected, -24, 
+            1000, {.forwards = false, .maxSpeed = 70}, false);
+        chassis.moveToPoint(-24 * autonSideDetected, -24, 
+            2500, {.forwards = false, .maxSpeed = 50}, false);
+        backClampPnuematic.set_value(1);
+        pros::delay(150);
+    }
+    hookState = HOOK_UP;
+    // Touch ladder
+    chassis.turnToPoint(-5 * autonSideDetected, -24, 
+        1000, {.forwards = true, .maxSpeed = 70}, false);
+    // Get ready to get the Alliance side mogo
+    chassis.moveToPoint(-5 * autonSideDetected, -24, 
+        1500, {.forwards = true, .maxSpeed = 70}, false);
+        
 }

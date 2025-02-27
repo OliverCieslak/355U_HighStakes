@@ -8,7 +8,7 @@ enum LadyBrownState {
     //VERTICAL,
     SCORING,
     HORIZONTAL,
-    // DOWN_LOW,
+     //DOWN_LOW,
     NUM_STATES
 };
 

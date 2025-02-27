@@ -26,6 +26,7 @@
 #define TURN_PID_MOVEMENT "Turn PID Movement"
 
 void qualsGoalRushAutonTweaked();
+void qualGoalRushAuton();
 void elimGoalRushAuton();
 void simpleAuton();
 void baseNegSide();

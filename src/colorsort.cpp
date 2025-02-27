@@ -165,17 +165,8 @@ void hookColorSort()
             } else {
                 stage2StallTimer = 0;
                 stage2WasStalled = false;
-                /*
-                if ((autonSideDetected == RED_SIDE_AUTON) && (currentColorState == BLUE_RING_DETECTED) ||
-                    (autonSideDetected == BLUE_SIDE_AUTON) && (currentColorState == RED_RING_DETECTED)) {
-                        /* Misses stake but falls in between
-                        pros::delay(20);
-                        IntakeStageTwo.move_voltage(0);
-                        pros::delay(20);
-                        IntakeStageTwo.move_voltage(hookUpVoltage);
-                    */
                    if ((autonSideDetected == RED_SIDE_AUTON) && (prevColorState == BLUE_RING_DETECTED) ||
-                       (autonSideDetected == BLUE_SIDE_AUTON) && (prevColorState = RED_RING_DETECTED)) {
+                       (autonSideDetected == BLUE_SIDE_AUTON) && (prevColorState == RED_RING_DETECTED)) {
                         printf("Was detected\n");
                         IntakeStageTwo.move_voltage(0);
                         pros::delay(25);

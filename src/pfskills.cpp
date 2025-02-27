@@ -6,15 +6,16 @@
 void pfSkills() {
     char buffer[256];
     // stopLemLibTrackingTask();
-    lemlib::Pose initialPose = lemlib::Pose(-62, 0, 90);
+    lemlib::Pose initialPose = lemlib::Pose(-58, 0, 90);
     chassis.setPose(initialPose);
 
+    /*
     std::vector<ParticleFilter::SensorMount> sideSensorMounts = {
         {&leftDistanceSensor, lemlib::Pose(4.5, 4.5, lemlib::degToRad(-90))},
         {&rightDistanceSensor, lemlib::Pose(-2.0, -4.5, lemlib::degToRad(90))},
     };
     ParticleFilter particleFilter(1000, sideSensorMounts);
-
+    */
     console.println("PF Skills");
     printf("PF Skills\n");
     masterController.print(0, 0, "PF Skills");
@@ -24,16 +25,18 @@ void pfSkills() {
     colorSortEnabled = false;
 
     // load ring on alliance stake
+
     hookState = HOOK_UP;
     pros::delay(400);
     hookState = HOOK_STOPPED;
+    backClampPnuematic.set_value(0);
 
     chassis.moveToPoint(-48, 0, 1000, {.forwards = true, .maxSpeed = 70}, false);
     chassis.turnToPoint(-48, -24, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO});
     chassis.moveToPoint(-48, -24, 3000, {.forwards = false, .maxSpeed = 40}, false);
     backClampPnuematic.set_value(1); // Get first Mogo
+    pros::delay(150);
     hookState = HOOK_UP;
-    pros::delay(100);
     IntakeStageOne.move_voltage(-12000);
 
     // Get first ring by ladder
@@ -41,8 +44,8 @@ void pfSkills() {
     chassis.moveToPoint(-24, -24, 3000, {.forwards = true, .maxSpeed = 50}, false);
 
     // Next ring by Wall Stake
-    chassis.turnToPoint(0, -60, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
-    chassis.moveToPoint(0, -60, 3000, {.forwards = true, .maxSpeed = 60}, false);
+    chassis.turnToPoint(0, -58, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
+    chassis.moveToPoint(0, -58, 3000, {.forwards = true, .maxSpeed = 60}, false);
     pros::delay(200);
     chassis.moveToPoint(0, -48, 2000, {.forwards = false, .maxSpeed = 70}, false);
     // Come back to corner
@@ -53,15 +56,16 @@ void pfSkills() {
     // Back up for last Ring
     chassis.moveToPoint(-48, -48, 2000, {.forwards = false, .maxSpeed = 70}, false);
     chassis.turnToPoint(-48, -60, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-48, -48, 1000, {.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(-48, -60, 1000, {.forwards = true, .maxSpeed = 50}, false);
     pros::delay(250);
+    chassis.moveToPoint(-48, -48, 1000, {.forwards = true, .maxSpeed = 50}, false);
 
     // Back into corner and drop Mogo
     chassis.turnToPoint(0, 0, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-56, -56, 2000, {.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-58, -58, 2000, {.forwards = false, .maxSpeed = 70}, false);
     backClampPnuematic.set_value(0);
-    pros::delay(50);
-
+    pros::delay(150);
+    
     // Move away from corner and start next Mogo
     chassis.moveToPoint(-48, -48, 2000, {.forwards = true, .maxSpeed = 70}, false);
 
@@ -105,11 +109,11 @@ void pfSkills() {
     chassis.turnToPoint(0, 48, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
     chassis.moveToPoint(0, 48, 6000, {.forwards = true, .maxSpeed = 70}, false);
     hookState = HOOK_STOPPED;
-    chassis.moveToPoint(24, 48, 2000, {.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(24, 48, 3000, {.forwards = true, .maxSpeed = 50}, false);
 
     // Get nearest mogo with blue ring
-    chassis.turnToPoint(60, 24, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
-    chassis.moveToPoint(60, 24, 2000, {.forwards = false, .maxSpeed = 50}, false);
+    chassis.turnToPoint(60, 22, 1000, {.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(60, 22, 3000, {.forwards = false, .maxSpeed = 50}, false);
 
     backClampPnuematic.set_value(1); // Clamp 3rd MoGo
     pros::delay(100);
@@ -117,17 +121,28 @@ void pfSkills() {
     chassis.turnToPoint(60, 60, 1000, {.forwards = false, .direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
     chassis.moveToPoint(60, 60, 4000, {.forwards = false, .maxSpeed = 60}, false);
 
-    /*
-    backClampPnuematic.set_value(0);  // Clamp 3rd MoGo
+    backClampPnuematic.set_value(0); // Clamp 3rd MoGo
     pros::delay(100);
+    chassis.moveToPoint(48, 24, 4000, {.forwards = true, .maxSpeed = 60}, false);  // Get 2nd ring by ladder
 
-    chassis.moveToPoint(24, 48, 2000, {.forwards = true, .maxSpeed = 60}, false);
-    chassis.turnToPoint(24, 0, 1000, {.forwards = false, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70}, false);
-    chassis.moveToPoint(24, 0, 4000, {.forwards = true, .maxSpeed = 50}, false);
-    backClampPnuematic.set_value(0);  // Clamp 4th MoGo
+    chassis.turnToPoint(48, -2, 1000, {.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(48, -2, 2000, {.forwards = false, .maxSpeed = 50}, false);
+
+    backClampPnuematic.set_value(1); // Clamp 4th MoGo
     pros::delay(100);
     hookState = HOOK_UP;
-    */
+
+    chassis.turnToPoint(24, -24, 1000, {.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(24, -24, 2000, {.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(48, -24, 2000, {.forwards = true, .maxSpeed = 50}, false);
+
+    chassis.turnToPoint(48, -56, 1000, {.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(48, -56, 2000, {.forwards = true, .maxSpeed = 50}, false);
+    chassis.moveToPoint(48, -48, 2000, {.forwards = false, .maxSpeed = 50}, false);
+
+    chassis.moveToPoint(58, -58, 3000, {.forwards = false, .maxSpeed = 50}, false);
+
+    chassis.moveToPoint(48, -48, 3000, {.forwards = true, .maxSpeed = 50}, false);
 
     // Cleanup
     IntakeStageOne.move_voltage(0);

@@ -7,6 +7,7 @@
 #include "particle.hpp"
 
 rd::Selector selector({
+                        {QUAL_GOAL_RUSH, &qualGoalRushAuton},
                         {ELIM_GOAL_RUSH, &elimGoalRushAuton},
                         {POS_SIDE_WALL_STAKE, &positiveSideWallStakeAuton},
                         {QUAL_R_NEG_SIDE, &qualRedNegSide},
@@ -18,7 +19,7 @@ rd::Selector selector({
                         {PF_SKILLS, &pfSkills},
                         {SAFE_SKILLS, &safeSkills},
                         {SINGLE_MOGO, &simpleSingleMogo},
-                        {QUAL_GOAL_RUSH, &qualsGoalRushAutonTweaked},
+                        {QUAL_GOAL_RUSH, &qualGoalRushAuton},
                         {SIMPLE_ALLIANCE, &simpleAllianceStake},
                         {GOAL_FILL, &goalFill},
                         {TWO_GOAL_SIDE_FILL, &twoGoalSideFill},
@@ -405,6 +406,7 @@ void opcontrol()
 
       if (masterController.get_digital(DIGITAL_R1))
       {
+         hookState = HOOK_UP;
          double current = std::abs(IntakeStageOne.get_current_draw());
          if (current > STAGE1_STALL_CURRENT_THRESHOLD) {
             if (stage1_stall_timer == 0) {
@@ -424,6 +426,7 @@ void opcontrol()
       }
       else if (masterController.get_digital(DIGITAL_R2))
       {
+         hookState = HOOK_DOWN;
          stage1_stall_timer = 0;
          stage1_was_stalled = false;
          IntakeStageOne.move_voltage(12000);
@@ -433,19 +436,22 @@ void opcontrol()
          stage1_stall_timer = 0;
          stage1_was_stalled = false;
          IntakeStageOne.move_voltage(0);
-      }
-
-      if (masterController.get_digital(DIGITAL_L1))
-      {
-         hookState = HOOK_UP;
-      }
-      else if (masterController.get_digital(DIGITAL_L2)){ 
-         hookState = HOOK_DOWN;
-      }
-      else
-      {
          hookState = HOOK_STOPPED;
       }
+
+      if (masterController.get_digital_new_press(DIGITAL_L1))
+      {
+         nextLadyBrownState();
+         //hookState = HOOK_UP;
+      }
+      if (masterController.get_digital_new_press(DIGITAL_L2)){ 
+         //hookState = HOOK_DOWN;
+         prevLadyBrownState();
+      }
+      /*else
+      {
+         //hookState = HOOK_STOPPED;
+      }*/
 
       if (masterController.get_digital_new_press(DIGITAL_A))
       {
