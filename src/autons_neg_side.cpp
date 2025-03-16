@@ -62,7 +62,7 @@ void baseNegSide()
     ladyBrownState = LadyBrownState::RESTING;  // Use lady brown to score alliance stake
     
     // Get the MoGo
-    chassis.moveToPoint(-24 * autonSideDetected, 24, 2000 ,{.forwards = false, .maxSpeed = 60}, false);
+    chassis.moveToPoint(-21 * autonSideDetected, 26, 2000 ,{.forwards = false, .maxSpeed = 60}, false);
     backClampPnuematic.set_value(1);
     pros::delay(100);
     // Get ready to intake rings
@@ -77,10 +77,10 @@ void baseNegSide()
     chassis.moveToPoint(-24 * autonSideDetected, 48, 3000 ,{.forwards = true, .maxSpeed = 60}, false);
 
     chassis.moveToPoint(-30 * autonSideDetected, 48, 1000 ,{.forwards = true, .maxSpeed = 100}, false);
-    chassis.turnToPoint(-45 * autonSideDetected, 55, 800 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-45 * autonSideDetected, 55, 800 ,{.forwards = true, .maxSpeed = 100}, false);
-    chassis.turnToPoint(-73 * autonSideDetected, 83, 800 ,{.forwards = true, .maxSpeed = 60}, false);
-    chassis.moveToPoint(-75 * autonSideDetected, 82, 1100 ,{.forwards = true, .maxSpeed = 70}, false);
+    //chassis.turnToPoint(-37 * autonSideDetected, 55, 800 ,{.forwards = true, .maxSpeed = 70}, false);
+    //chassis.moveToPoint(-65 * autonSideDetected, 58, 800 ,{.forwards = true, .maxSpeed = 100}, false);
+    //chassis.turnToPoint(-75 * autonSideDetected, 83, 800 ,{.forwards = true, .maxSpeed = 60}, false);
+    //chassis.moveToPoint(-80 * autonSideDetected, 82, 1100 ,{.forwards = true, .maxSpeed = 60}, false);
     
     /*chassis.moveToPoint(-50 * autonSideDetected, 50, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
     chassis.moveToPoint(-60 * autonSideDetected, 60, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
@@ -98,9 +98,9 @@ void qualNegSide()
 { 
     baseNegSide();
     // For Elim, head to positive corner.  For quals, head to the ladder
-    chassis.turnToPoint(-35 * autonSideDetected, 0, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-35 * autonSideDetected, 0, 2000 ,{.forwards = true, .maxSpeed = 100}, false);
-    ladyBrownState = LadyBrownState::HORIZONTAL; 
+    chassis.turnToPoint(-25 * autonSideDetected, 0, 1000 ,{.forwards = true, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-25 * autonSideDetected, 0, 2000 ,{.forwards = true, .maxSpeed = 100}, false);
+    //ladyBrownState = LadyBrownState::HORIZONTAL; 
 }
 
 void elimNegSide()

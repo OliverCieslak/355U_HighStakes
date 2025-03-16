@@ -6,7 +6,7 @@
 void pfSkills() {
     char buffer[256];
     // stopLemLibTrackingTask();
-    lemlib::Pose initialPose = lemlib::Pose(-58, 0, 90);
+    lemlib::Pose initialPose = lemlib::Pose(-60, 0, 90);
     chassis.setPose(initialPose);
 
     /*
@@ -36,10 +36,12 @@ void pfSkills() {
     chassis.moveToPoint(-48, -24, 3000, {.forwards = false, .maxSpeed = 40}, false);
     backClampPnuematic.set_value(1); // Get first Mogo
     pros::delay(150);
-    hookState = HOOK_UP;
     IntakeStageOne.move_voltage(-12000);
 
     // Get first ring by ladder
+    pros::delay(150);
+    hookState = HOOK_UP; 
+
     chassis.turnToPoint(-24, -24, 1000, {.forwards = true, .direction = lemlib::AngularDirection::AUTO, .maxSpeed = 70});
     chassis.moveToPoint(-24, -24, 3000, {.forwards = true, .maxSpeed = 50}, false);
 
@@ -140,9 +142,9 @@ void pfSkills() {
     chassis.moveToPoint(48, -56, 2000, {.forwards = true, .maxSpeed = 50}, false);
     chassis.moveToPoint(48, -48, 2000, {.forwards = false, .maxSpeed = 50}, false);
 
-    chassis.moveToPoint(58, -58, 3000, {.forwards = false, .maxSpeed = 50}, false);
+    chassis.moveToPoint(58, -58, 2000, {.forwards = false, .maxSpeed = 50}, false);
 
-    chassis.moveToPoint(48, -48, 3000, {.forwards = true, .maxSpeed = 50}, false);
+    //chassis.moveToPoint(48, -48, 2000, {.forwards = true, .maxSpeed = 50}, false);
 
     // Cleanup
     IntakeStageOne.move_voltage(0);

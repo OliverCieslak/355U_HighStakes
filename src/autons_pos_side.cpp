@@ -4,6 +4,7 @@
 
 void positiveSideWallStakeAuton()
 {
+    autonSideDetected = BLUE_SIDE_AUTON;
     colorSortEnabled = true;
     //colorSortEnabled = false;
     // start with 2nd notch on seam farther from the wall
@@ -63,6 +64,7 @@ void positiveSideWallStakeAuton()
 
 void qualsGoalRushAutonTweaked()
 {   
+    autonSideDetected = BLUE_SIDE_AUTON;
     // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
     chassis.setPose(0, 0, 0);
@@ -108,158 +110,9 @@ void qualsGoalRushAutonTweaked()
     chassis.moveToPoint(38 * autonSideDetected, -44, 4000 ,{.forwards = true, .maxSpeed = 50}, false); //drive to pick up other stake
 }
 
-void elimGoalRushAutonZeroZeroZero()
-{   
-    colorSortEnabled = true;
-    // start with 2nd notch on seam farther from the wall
-    chassis.cancelAllMotions();
-    chassis.setPose(0, 0, 0);
-    lemlib::Pose start_pose = chassis.getPose();
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_BRAKE); 
-
-    IntakeStageOne.move_voltage(-12000); 
-    chassis.moveToPoint(0 * autonSideDetected, 38, 
-                        2500, {.forwards = true, .maxSpeed = 127}, false);
-    if(autonSideDetected == RED_SIDE_AUTON) {
-        leftDoinker.set_value(1); }
-    else {
-        rightDoinker.set_value(1); 
-    }
-    pros::delay(200);
-    chassis.moveToPoint(5 * autonSideDetected, 10, 
-                        2000, {.forwards = false, .maxSpeed = 90}, false);
-    if(autonSideDetected == RED_SIDE_AUTON) {
-        leftDoinker.set_value(0); }
-    else {
-        rightDoinker.set_value(0); 
-    }
-    pros::delay(200);
-    if(autonSideDetected == RED_SIDE_AUTON) {
-        chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
-    } else {
-        chassis.turnToHeading(180 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
-    }
-    chassis.cancelAllMotions();
-    chassis.moveToPoint(-5 * autonSideDetected, 25, 
-                        4000, {.forwards = false, .maxSpeed = 40}, false);
-    chassis.cancelAllMotions(); 
-
-    pros::delay(50);
-    backClampPnuematic.set_value(1); 
-    pros::delay(100);
-
-    // Did we win the Goal Rush and clamp the goal?
-    if(goalDetector.get_value()) {
-        masterController.print(3, 0, "Goal Rush Won");
-        // We won the goal rush
-        hookState = HOOK_UP;
-        pros::delay(200);
-
-        chassis.moveToPoint(16 * autonSideDetected, 10, 
-                            2000, {.forwards = true, .maxSpeed = 90}, false);
-        // Try to get the bottom alliance ring from corner
-        chassis.moveToPoint(28 * autonSideDetected, -8, 
-                            1000, {.forwards = true, .maxSpeed = 60}, false);
-        pros::delay(100);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 60}, false);
-        // TODO - If we have time, we could try to get the 2nd alliance ring from corner
-        chassis.moveToPoint(28 * autonSideDetected, -8, 
-                            1000, {.forwards = true, .maxSpeed = 60}, false);
-        pros::delay(100);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 60}, false);
-        chassis.moveToPoint(28 * autonSideDetected, -8, 
-                            1000, {.forwards = true, .maxSpeed = 60}, false);
-        pros::delay(100);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 60}, false);
-
-        // Get ready to place goal in corner
-        if(autonSideDetected == RED_SIDE_AUTON) {
-            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
-        } else {
-            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
-        }
-        hookState = HOOK_STOPPED;
-        backClampPnuematic.set_value(0); 
-        pros::delay(100);
-
-        chassis.moveToPoint(16 * autonSideDetected, 6, 
-                            1000, {.forwards = false, .maxSpeed = 70}, false);
-        // Line up to get the alliance MoGo
-        chassis.turnToPoint(-13 * autonSideDetected, 18, 
-                            4000, {.forwards = false, .maxSpeed = 70}, false);
-        chassis.moveToPoint(-13 * autonSideDetected, 18, 
-                            4000, {.forwards = false, .maxSpeed = 50}, false);
-        backClampPnuematic.set_value(1);
-        pros::delay(100);
-
-        // If we miss the 2nd MoGo, stay near it.
-        if(goalDetector.get_value()) {
-            // We might have a ring to score on this Mogo
-            hookState = HOOK_UP;
-            // Get ready to rush the other side
-            chassis.moveToPoint(0 * autonSideDetected, 32, 
-                                2000, {.forwards = true, .maxSpeed = 90}, false);
-            pros::delay(500);
-        }
-    } else {
-        // We lost the goal rush
-        masterController.print(3, 0, "Goal Rush Lost");
-        backClampPnuematic.set_value(0); 
- 
-        // Line up to get the alliance MoGo
-        chassis.moveToPoint(6 * autonSideDetected, 6, 
-                            4000, {.forwards = true, .maxSpeed = 80}, false);
-        // Line up to get the alliance MoGo
-        chassis.moveToPoint(-13 * autonSideDetected, 23, 
-                            4000, {.forwards = false, .maxSpeed = 50}, false);
-        backClampPnuematic.set_value(1); 
-        pros::delay(100);
-        // Get 2 rings on
-        hookState = HOOK_UP;
-        // Try to get the bottom alliance ring from corner
-        chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            2000, {.forwards = true, .maxSpeed = 60}, false);
-
-        pros::delay(100);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 80}, false);
-        /* There's not enough time to get 2 corner rings and get in position
-        // Try to get the (2nd) other alliance ring from corner and hope color sort works
-        chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            1000, {.forwards = true, .maxSpeed = 50}, false);
-        pros::delay(100);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 80}, false);
-        // Try to get the 3rd (alliance) ring from corner
-        chassis.moveToPoint(28 * autonSideDetected, -5, 
-                            1000, {.forwards = true, .maxSpeed = 80}, false);
-        chassis.moveToPoint(23 * autonSideDetected, 0, 
-                            1000, {.forwards = false, .maxSpeed = 50}, false);
-        */
-
-        // Get ready to place goal in corner
-        if(autonSideDetected == RED_SIDE_AUTON) {
-            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CCW_COUNTERCLOCKWISE, .maxSpeed = 70}, false);
-        } else {
-            chassis.turnToHeading(0 * autonSideDetected, 2000, {.direction = lemlib::AngularDirection::CW_CLOCKWISE, .maxSpeed = 70}, false);
-        }
-        backClampPnuematic.set_value(0); 
-        pros::delay(100);
-        IntakeStageOne.move_voltage(0);
-        hookState = HOOK_STOPPED;
-        // For Elims, position right on the line to rush them or defend.  For qual version, change this to hit the ladder
-        chassis.turnToPoint(10 * autonSideDetected, 37, 
-                            2000, {.forwards = false, .maxSpeed = 70}, false);
-        chassis.moveToPoint(10 * autonSideDetected, 37, 
-                            2000, {.forwards = false, .maxSpeed = 90}, false);
-    }
-}
-
 void elimGoalRushAuton()
 {   
+    autonSideDetected = BLUE_SIDE_AUTON;
     colorSortEnabled = true;
     // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
@@ -289,8 +142,9 @@ void elimGoalRushAuton()
     chassis.moveToPoint(-20 * autonSideDetected, -48, 
         2000, {.forwards = false, .maxSpeed = 50}, false);
 
-    backClampPnuematic.set_value(1); 
     pros::delay(100);
+    backClampPnuematic.set_value(1); 
+    pros::delay(350);
 
     // Did we win the Goal Rush and clamp the goal?
     if(goalDetector.get_value()) {
@@ -305,13 +159,13 @@ void elimGoalRushAuton()
         chassis.moveToPoint(-48 * autonSideDetected, -48, 
                             2000, {.forwards = true, .maxSpeed = 90}, false);
         // Face the corner
-        chassis.turnToPoint(-64 * autonSideDetected, -64, 
+        chassis.turnToPoint(-69 * autonSideDetected, -68, 
                             1000, {.forwards = true, .maxSpeed = 70}, false);
 
         // Get ready to intake
         IntakeStageOne.move_voltage(-12000);
         hookState = HOOK_STOPPED;
-        chassis.moveToPoint(-64 * autonSideDetected, -64, 
+        chassis.moveToPoint(-69 * autonSideDetected, -68, 
                             1500, {.forwards = true, .maxSpeed = 50}, false);
         pros::delay(250);
         // Back away to place the MoGo
@@ -335,6 +189,7 @@ void elimGoalRushAuton()
             2500, {.forwards = false, .maxSpeed = 50}, false);
         backClampPnuematic.set_value(1); 
         pros::delay(100);
+
         if(goalDetector.get_value()) {
             hookState = HOOK_UP;
             // Get ready to attack
@@ -390,6 +245,7 @@ void elimGoalRushAuton()
 
 void qualGoalRushAuton()
 {   
+    autonSideDetected = BLUE_SIDE_AUTON;
     colorSortEnabled = true;
     // start with 2nd notch on seam farther from the wall
     chassis.cancelAllMotions();
@@ -415,34 +271,37 @@ void qualGoalRushAuton()
     }
     pros::delay(100);
     // Goal rush done, now try to grab the goal and score the rings
-    chassis.turnToPoint(0 * autonSideDetected, -48, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
-    chassis.moveToPoint(-20 * autonSideDetected, -48, 
+    chassis.turnToPoint(-20 * autonSideDetected, -51, 1000 ,{.forwards = false, .maxSpeed = 70}, false);
+    chassis.moveToPoint(-20 * autonSideDetected, -51, 
         2000, {.forwards = false, .maxSpeed = 50}, false);
 
     backClampPnuematic.set_value(1); 
-    pros::delay(100);
+    pros::delay(300);
     
     // Did we win the Goal Rush and clamp the goal?
     if(goalDetector.get_value()) {
         masterController.print(3, 0, "Goal Rush Won");
         // We won the goal rush
-        hookState = HOOK_UP;
+        hookState = HOOK_UP_AUTON;
         pros::delay(400);
 
         // Reverse the intake to push the other ring away
         IntakeStageOne.move_voltage(12000);
 
-        chassis.moveToPoint(-48 * autonSideDetected, -48, 
+        chassis.moveToPoint(-48 * autonSideDetected, -50, 
                             2000, {.forwards = true, .maxSpeed = 90}, false);
         // Face the corner
-        chassis.turnToPoint(-64 * autonSideDetected, -64, 
+        
+        chassis.turnToPoint(-80 * autonSideDetected, -70, 
                             1000, {.forwards = true, .maxSpeed = 70}, false);
 
         // Get ready to intake
         IntakeStageOne.move_voltage(-12000);
         hookState = HOOK_STOPPED;
-        chassis.moveToPoint(-64 * autonSideDetected, -64, 
-                            1500, {.forwards = true, .maxSpeed = 50}, false);
+        chassis.moveToPoint(-80 * autonSideDetected, -70, 
+                            800, {.forwards = true, .maxSpeed = 70}, false);
+        chassis.moveToPoint(-84 * autonSideDetected, -70, 
+                                700, {.forwards = true, .maxSpeed = 70}, false);
         pros::delay(250);
         // Back away to place the MoGo
         chassis.moveToPoint(-48 * autonSideDetected, -48, 
@@ -457,11 +316,12 @@ void qualGoalRushAuton()
 
         chassis.moveToPoint(-24 * autonSideDetected, -48, 
             2000, {.forwards = true, .maxSpeed = 60}, false);
+        
 
         // Get ready to get the Alliance side mogo
-        chassis.turnToPoint(-24 * autonSideDetected, -24, 
+        chassis.turnToPoint(-26 * autonSideDetected, -21, 
             1000, {.forwards = false, .maxSpeed = 70}, false);
-        chassis.moveToPoint(-24 * autonSideDetected, -24, 
+        chassis.moveToPoint(-26 * autonSideDetected, -21, 
             2500, {.forwards = false, .maxSpeed = 50}, false);
         backClampPnuematic.set_value(1); 
         pros::delay(150);
@@ -481,9 +341,9 @@ void qualGoalRushAuton()
     hookState = HOOK_UP;
     // Touch ladder
     chassis.turnToPoint(-5 * autonSideDetected, -24, 
-        1000, {.forwards = true, .maxSpeed = 70}, false);
+        1000, {.forwards = true, .maxSpeed = 90}, false);
     // Get ready to get the Alliance side mogo
     chassis.moveToPoint(-5 * autonSideDetected, -24, 
-        1500, {.forwards = true, .maxSpeed = 70}, false);
+        1500, {.forwards = true, .maxSpeed = 100}, false);
         
 }
